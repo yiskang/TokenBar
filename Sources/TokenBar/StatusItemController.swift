@@ -34,6 +34,20 @@ final class StatusItemController: NSObject {
         }
     }
 
+    /// Swaps the menu-bar icon image (an animation frame).
+    func setFrame(_ image: NSImage) {
+        statusItem.button?.image = image
+    }
+
+    /// Whether the menu bar around the item renders dark (picks the white
+    /// frame set over the black one). Status-item buttons report *vibrant*
+    /// appearances (NSAppearanceNameVibrantDark), which bestMatch against
+    /// [.darkAqua, .aqua] misses — match on the name instead.
+    var isDarkAppearance: Bool {
+        let appearance = statusItem.button?.effectiveAppearance ?? NSApp.effectiveAppearance
+        return appearance.name.rawValue.localizedCaseInsensitiveContains("dark")
+    }
+
     /// Sets the text shown next to the menu-bar icon ("" = icon only).
     func updateTitle(_ title: String) {
         guard let button = statusItem.button else { return }

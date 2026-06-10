@@ -6,6 +6,8 @@ import TokenBarCore
 /// and the updater arrive with their subsystems in later phases.
 struct SettingsPanel: View {
     @AppStorage(TrayMode.storageKey) private var trayModeRaw = TrayMode.todayTokens.rawValue
+    @AppStorage(TrayAnimator.animateKey) private var animateTray = true
+    @AppStorage(TrayAnimator.styleKey) private var animationStyle = "cat"
     @AppStorage("tokenbar.limits.asUsed") private var limitsAsUsed = false
     @AppStorage("tokenbar.limits.paceMode") private var paceModeRaw = PaceMode.historical.rawValue
     @AppStorage("tokenbar.limits.layout") private var layoutRaw = LimitsLayout.full.rawValue
@@ -20,6 +22,16 @@ struct SettingsPanel: View {
                 radioGroup(
                     selection: $trayModeRaw,
                     options: TrayMode.allCases.map { ($0.rawValue, $0.label) })
+            }
+
+            section("Menubar icon") {
+                toggleRow("Animate based on token usage", isOn: $animateTray)
+                if animateTray {
+                    radioGroup(
+                        selection: $animationStyle,
+                        options: [("cat", "Spinning cat"), ("parrot", "Party parrot")])
+                }
+                hint("The icon spins faster as the live token rate climbs (idle 2 fps, 1M tokens/min tops out at 40 fps). Dark/light frames follow the menu bar appearance.")
             }
 
             section("Agent limits") {

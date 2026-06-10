@@ -17,6 +17,12 @@ let package = Package(
             name: "TokenBar",
             dependencies: ["TokenBarCore"],
             path: "Sources/TokenBar",
+            resources: [
+                .copy("Resources/anim-cat2"),
+                .copy("Resources/anim-cat2-light"),
+                .copy("Resources/anim-parrot"),
+                .copy("Resources/anim-parrot-light"),
+            ],
             linkerSettings: rustLinkerSettings
         ),
     ]

@@ -8,6 +8,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private static let titleRefreshSecs: UInt64 = 60
 
     private var statusController: StatusItemController?
+    private var trayAnimator: TrayAnimator?
     private var titleRefreshTask: Task<Void, Never>?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -15,6 +16,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let controller = StatusItemController()
         statusController = controller
+        let animator = TrayAnimator(controller: controller)
+        trayAnimator = animator
+        animator.start()
         startTitleRefresh()
 
         // Debug hook: `swift run TokenBar --open-popover` shows the popover
@@ -28,6 +32,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         titleRefreshTask?.cancel()
+        trayAnimator?.stop()
     }
 
     /// Refreshes the tray title every 60s in the user's chosen mode. Reads
