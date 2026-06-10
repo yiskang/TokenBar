@@ -48,7 +48,7 @@ struct PopoverView: View {
             ScrollView {
                 Group {
                     if showSettings {
-                        SettingsPanel()
+                        SettingsPanel(agentUsage: model.agentUsage)
                     } else {
                         content
                     }

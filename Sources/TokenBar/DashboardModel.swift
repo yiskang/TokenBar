@@ -49,7 +49,11 @@ enum AppView: String, CaseIterable {
             colors = ModelColorMap(report: report)
             phase = .ready
         } catch {
-            phase = .failed("Failed to load usage: \(error)")
+            // Keep showing stale data over an error screen when a previous
+            // load succeeded — a transient failure must not blank the UI.
+            if payload == nil {
+                phase = .failed("Failed to load usage: \(error)")
+            }
         }
     }
 

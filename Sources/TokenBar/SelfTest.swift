@@ -141,6 +141,37 @@ enum SelfTest {
             TraceBucket.collapseByClient([bucket("amp", "Main", "unknown", 5)]).first?.model == "unknown",
             "collapse keeps a lone unknown model")
 
+        // Quota resolver: auto picks the tightest window across agents,
+        // erroring agents are skipped, explicit selections parse. The payload
+        // builds via JSON (the snapshot types have no memberwise inits).
+        let quotaJSON = """
+        {"generatedAt":"now","agents":[
+          {"clientId":"codex","source":"oauth","updatedAt":"now",
+           "windows":[{"label":"Session","usedPercent":20,"remainingPercent":80},
+                      {"label":"Weekly","usedPercent":65,"remainingPercent":35}]},
+          {"clientId":"claude","source":"oauth","updatedAt":"now",
+           "windows":[{"label":"Session","usedPercent":88,"remainingPercent":12},
+                      {"label":"Weekly","usedPercent":10,"remainingPercent":90}]},
+          {"clientId":"broken","source":"oauth","updatedAt":"now",
+           "windows":[{"label":"Session","usedPercent":99,"remainingPercent":1}],
+           "error":"401"}
+        ]}
+        """
+        let quotaPayload = try! JSONDecoder().decode(
+            AgentUsagePayload.self, from: Data(quotaJSON.utf8))
+        let tightest = QuotaResolver.resolve(payload: quotaPayload, selection: "auto")
+        expect(
+            tightest?.clientId == "claude" && tightest?.window.label == "Session",
+            "auto resolves the tightest healthy window")
+        expect(
+            QuotaResolver.resolve(payload: quotaPayload, selection: "codex|Weekly")?
+                .window.remainingPercent == 35,
+            "explicit quota selection resolves")
+        expect(
+            QuotaResolver.resolve(payload: quotaPayload, selection: "nope|Session") == nil,
+            "unknown quota selection is nil")
+        expect(QuotaResolver.resolve(payload: nil, selection: "auto") == nil, "no payload, no quota")
+
         // Limits-card drag reorder: direction-aware insert (down → after the
         // target, up → before it) so single-step moves both work.
         let order = ["a", "b", "c", "d"]

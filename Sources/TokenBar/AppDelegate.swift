@@ -42,6 +42,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func startTitleRefresh() {
         titleRefreshTask = Task { [weak self] in
             var lastFullRefresh = Date.distantPast
+            // A failed refresh keeps showing the last good numbers — the
+            // title must never blank/zero out on a transient error.
+            var lastGraph: UsagePayload?
+            var lastRate: Double?
             while !Task.isCancelled {
                 let mode = TrayMode.current
                 let intervalMin = max(1, UserDefaults.standard.object(forKey: "tokenbar.refresh.intervalMin")
@@ -51,14 +55,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     forceRefresh ? try TBCore.refreshGraph() : try TBCore.graph()
                 }.value
                 if forceRefresh && graph != nil { lastFullRefresh = Date() }
-                let rate: Double? = mode == .tokensPerMin
-                    ? try? await Task.detached(priority: .utility) {
+                if let graph { lastGraph = graph }
+                if mode == .tokensPerMin {
+                    let rate = try? await Task.detached(priority: .utility) {
                         try TBCore.tokensPerMin()
                     }.value
-                    : nil
+                    if let rate { lastRate = rate }
+                }
                 guard !Task.isCancelled else { break }
+                let quotaRemaining = self?.trayAnimator?.quotaRemaining
                 self?.statusController?.updateTitle(
-                    mode.title(graph: graph, tokensPerMin: rate))
+                    mode.title(
+                        graph: lastGraph, tokensPerMin: lastRate,
+                        quotaRemaining: quotaRemaining),
+                    color: mode.titleColor(quotaRemaining: quotaRemaining))
                 try? await Task.sleep(for: .seconds(Double(Self.titleRefreshSecs)))
             }
         }

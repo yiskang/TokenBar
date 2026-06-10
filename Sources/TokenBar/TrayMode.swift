@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import TokenBarCore
 
@@ -9,6 +10,7 @@ enum TrayMode: String, CaseIterable {
     case totalTokens = "total_tokens"
     case totalCost = "total_cost"
     case tokensPerMin = "tokens_per_min"
+    case quotaLeft = "quota_left"
     case hidden
 
     static let storageKey = "tokenbar.tray.mode"
@@ -25,13 +27,18 @@ enum TrayMode: String, CaseIterable {
         case .totalTokens: return "Total tokens (1.5B)"
         case .totalCost: return "Total cost ($889)"
         case .tokensPerMin: return "Tokens / min (12.4K/m)"
+        case .quotaLeft: return "Quota left (57%)"
         case .hidden: return "Icon only"
         }
     }
 
-    /// The tray title for this mode ("" = icon only). `tokensPerMin` is only
-    /// consulted by the live-rate mode.
-    func title(graph: UsagePayload?, tokensPerMin: Double?) -> String {
+    /// The tray title for this mode ("" = icon only). `tokensPerMin` feeds
+    /// the live-rate mode; `quotaRemaining` the quota mode.
+    func title(graph: UsagePayload?, tokensPerMin: Double?, quotaRemaining: Double? = nil) -> String {
+        if self == .quotaLeft {
+            guard let quotaRemaining else { return "—%" }
+            return "\(Int(min(100, max(0, quotaRemaining)).rounded()))%"
+        }
         guard self != .hidden, let graph else { return "" }
         switch self {
         case .todayTokens:
@@ -45,8 +52,14 @@ enum TrayMode: String, CaseIterable {
         case .tokensPerMin:
             guard let tokensPerMin else { return "—/m" }
             return "\(Format.compactTokens(Int64(max(0, tokensPerMin).rounded())))/m"
-        case .hidden:
+        case .quotaLeft, .hidden:
             return ""
         }
+    }
+
+    /// Gauge color for the quota title (nil = default label color).
+    func titleColor(quotaRemaining: Double?) -> NSColor? {
+        guard self == .quotaLeft, let quotaRemaining else { return nil }
+        return TrayIcons.gaugeColor(remaining: quotaRemaining)
     }
 }

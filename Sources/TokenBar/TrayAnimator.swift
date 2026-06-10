@@ -11,13 +11,19 @@ final class TrayAnimator {
     static let animateKey = "tokenbar.tray.animate"
     static let styleKey = "tokenbar.tray.animationStyle"
 
+    static let quotaSourceKey = "tokenbar.quota.source"
+
     private weak var controller: StatusItemController?
     /// Frame sets keyed by "<style>|<dark|light>".
     private let frames: [String: [NSImage]]
     private var animationTask: Task<Void, Never>?
     private var loadTask: Task<Void, Never>?
+    private var quotaTask: Task<Void, Never>?
     /// RunCat load signal in [0, 100]: tokens/min ÷ 10K, so 1M tok/min = 100.
     private var load: Double = 0
+    /// Latest OAuth quota snapshot — feeds the gauge icon styles and the
+    /// quota title mode (AppDelegate reads it through `quotaRemaining`).
+    private(set) var quota: AgentUsagePayload?
 
     init(controller: StatusItemController) {
         self.controller = controller
@@ -45,11 +51,31 @@ final class TrayAnimator {
     func start() {
         startAnimationLoop()
         startLoadPolling()
+        startQuotaPolling()
     }
 
     func stop() {
         animationTask?.cancel()
         loadTask?.cancel()
+        quotaTask?.cancel()
+    }
+
+    /// Last successfully resolved remaining percent — a transient fetch
+    /// failure (or a provider erroring) must never zero/blank the display.
+    private var cachedQuotaRemaining: Double?
+
+    /// The selected quota window's remaining percent, holding the last good
+    /// value across failed refreshes (nil only before any data ever arrived).
+    var quotaRemaining: Double? {
+        let selection = UserDefaults.standard.string(forKey: Self.quotaSourceKey)
+            ?? QuotaResolver.auto
+        if let value = QuotaResolver.resolve(payload: quota, selection: selection)?
+            .window.remainingPercent
+        {
+            cachedQuotaRemaining = value
+            return value
+        }
+        return cachedQuotaRemaining
     }
 
     private func currentFrames() -> [NSImage] {
@@ -76,8 +102,22 @@ final class TrayAnimator {
             var lastKey = ""
             while !Task.isCancelled {
                 guard let self else { break }
-                let set = self.currentFrames()
                 let style = UserDefaults.standard.string(forKey: Self.styleKey) ?? "cat"
+                // Gauge styles: redraw from the latest quota every couple of
+                // seconds (cheap vector image; also tracks appearance flips).
+                if let gaugeStyle = QuotaIconStyle(rawValue: style) {
+                    let coloring = IconColoring(
+                        rawValue: UserDefaults.standard.string(forKey: IconColoring.storageKey) ?? ""
+                    ) ?? .warningOnly
+                    self.controller?.setFrame(
+                        TrayIcons.image(
+                            style: gaugeStyle, remaining: self.quotaRemaining,
+                            dark: self.controller?.isDarkAppearance ?? true,
+                            coloring: coloring))
+                    try? await Task.sleep(for: .seconds(2))
+                    continue
+                }
+                let set = self.currentFrames()
                 if style != lastKey {
                     index = 0
                     lastKey = style
@@ -95,6 +135,22 @@ final class TrayAnimator {
                 self.controller?.setFrame(set[index % set.count])
                 index = (index + 1) % set.count
                 try? await Task.sleep(for: self.frameInterval)
+            }
+        }
+    }
+
+    /// OAuth quota fetch is network-bound (~30s worst case across four
+    /// providers), so refresh on a 5-minute cadence — quota windows move
+    /// slowly and the popover has its own faster loop while open.
+    private func startQuotaPolling() {
+        quotaTask = Task { [weak self] in
+            while !Task.isCancelled {
+                let payload = try? await Task.detached(priority: .utility) {
+                    try TBCore.agentUsage()
+                }.value
+                guard let self, !Task.isCancelled else { break }
+                if let payload { self.quota = payload }
+                try? await Task.sleep(for: .seconds(300))
             }
         }
     }

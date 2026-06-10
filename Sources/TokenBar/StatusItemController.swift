@@ -48,13 +48,27 @@ final class StatusItemController: NSObject {
         return appearance.name.rawValue.localizedCaseInsensitiveContains("dark")
     }
 
-    /// Sets the text shown next to the menu-bar icon ("" = icon only).
-    func updateTitle(_ title: String) {
+    private var lastTitleKey = ""
+
+    /// Sets the text shown next to the menu-bar icon ("" = icon only). A
+    /// color (the quota gauge) renders as an attributed title.
+    func updateTitle(_ title: String, color: NSColor? = nil) {
         guard let button = statusItem.button else { return }
         // Leading space keeps a gap between the template icon and the text.
         let value = title.isEmpty ? "" : " \(title)"
-        if button.title != value {
-            button.title = value
+        let key = "\(value)|\(color?.description ?? "")"
+        if key != lastTitleKey {
+            lastTitleKey = key
+            if let color, !value.isEmpty {
+                button.attributedTitle = NSAttributedString(
+                    string: value,
+                    attributes: [
+                        .font: NSFont.menuBarFont(ofSize: 0),
+                        .foregroundColor: color,
+                    ])
+            } else {
+                button.title = value
+            }
         }
         button.imagePosition = value.isEmpty ? .imageOnly : .imageLeft
     }

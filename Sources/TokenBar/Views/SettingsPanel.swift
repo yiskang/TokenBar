@@ -5,9 +5,14 @@ import TokenBarCore
 /// same UserDefaults keys the cards/tray read live. Autostart, tray animation
 /// and the updater arrive with their subsystems in later phases.
 struct SettingsPanel: View {
+    /// For the quota-source picker (the windows currently known).
+    var agentUsage: AgentUsagePayload?
+
     @AppStorage(TrayMode.storageKey) private var trayModeRaw = TrayMode.todayTokens.rawValue
     @AppStorage(TrayAnimator.animateKey) private var animateTray = true
     @AppStorage(TrayAnimator.styleKey) private var animationStyle = "cat"
+    @AppStorage(IconColoring.storageKey) private var iconColoringRaw = IconColoring.warningOnly.rawValue
+    @AppStorage(TrayAnimator.quotaSourceKey) private var quotaSource = QuotaResolver.auto
     @AppStorage("tokenbar.limits.asUsed") private var limitsAsUsed = false
     @AppStorage("tokenbar.limits.paceMode") private var paceModeRaw = PaceMode.historical.rawValue
     @AppStorage("tokenbar.limits.layout") private var layoutRaw = LimitsLayout.full.rawValue
@@ -25,13 +30,24 @@ struct SettingsPanel: View {
             }
 
             section("Menubar icon") {
-                toggleRow("Animate based on token usage", isOn: $animateTray)
-                if animateTray {
+                radioGroup(
+                    selection: $animationStyle,
+                    options: [("cat", "Spinning cat"), ("parrot", "Party parrot")]
+                        + QuotaIconStyle.allCases.map { ($0.rawValue, $0.label) })
+                if isAnimatedStyle {
+                    toggleRow("Animate based on token usage", isOn: $animateTray)
+                    hint("Spins faster as the live token rate climbs (idle 2 fps, 1M tokens/min tops out at 40 fps).")
+                } else {
                     radioGroup(
-                        selection: $animationStyle,
-                        options: [("cat", "Spinning cat"), ("parrot", "Party parrot")])
+                        selection: $iconColoringRaw,
+                        options: IconColoring.allCases.map { ($0.rawValue, $0.label) })
+                    hint("Gauge icons drain as the selected quota window empties. \"Color on warning only\" stays monochrome until under 25% left (amber) and 10% (red), like the battery icon.")
                 }
-                hint("The icon spins faster as the live token rate climbs (idle 2 fps, 1M tokens/min tops out at 40 fps). Dark/light frames follow the menu bar appearance.")
+            }
+
+            section("Quota source") {
+                radioGroup(selection: $quotaSource, options: quotaSourceOptions)
+                hint("Feeds the gauge icons and the \"Quota left\" title. Auto follows whichever window is closest to running out.")
             }
 
             section("Agent limits") {
@@ -74,6 +90,24 @@ struct SettingsPanel: View {
                 hint("TokenBar began as a fork of tokcat by handlecusion. Parsing & pricing come from tokscale by Junho Yeo; the menu-bar patterns reference CodexBar by Peter Steinberger. MIT licensed.")
             }
         }
+    }
+
+    private var isAnimatedStyle: Bool {
+        animationStyle == "cat" || animationStyle == "parrot"
+    }
+
+    /// Auto + every window the latest quota snapshot knows about.
+    private var quotaSourceOptions: [(String, String)] {
+        var options = [(QuotaResolver.auto, "Auto (tightest window)")]
+        for agent in agentUsage?.agents ?? [] where agent.error == nil {
+            let name = ClientRegistry.style(agent.clientId).displayName
+            for window in agent.windows {
+                options.append(
+                    (QuotaResolver.selection(clientId: agent.clientId, label: window.label),
+                     "\(name) · \(window.label)"))
+            }
+        }
+        return options
     }
 
     // MARK: - Building blocks
