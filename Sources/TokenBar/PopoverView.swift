@@ -48,6 +48,8 @@ struct PopoverView: View {
             await model.ensureData(for: activeView.wrappedValue)
         }
         .task { await pollTokensPerMin() }
+        .task { await model.pollAgentUsage() }
+        .task { await model.pollTrace() }
     }
 
     // MARK: - Sections
@@ -109,6 +111,7 @@ struct PopoverView: View {
                 OverviewView(
                     payload: payload, clientIds: clientIds, stats: activeStats,
                     modelReport: model.modelReport, colors: model.colors,
+                    trace: model.trace, agentUsage: model.agentUsage,
                     singleClient: singleClient)
             case .models:
                 ModelsView(

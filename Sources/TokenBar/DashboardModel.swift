@@ -29,6 +29,8 @@ enum AppView: String, CaseIterable {
     private(set) var colors = ModelColorMap(report: nil)
     private(set) var hourly: HourlyReport?
     private(set) var agents: AgentsReport?
+    private(set) var agentUsage: AgentUsagePayload?
+    private(set) var trace: [TraceBucket] = []
 
     /// TBCore is blocking — every fetch hops off the main actor.
     func load() async {
@@ -48,6 +50,34 @@ enum AppView: String, CaseIterable {
             phase = .ready
         } catch {
             phase = .failed("Failed to load usage: \(error)")
+        }
+    }
+
+    /// Poll the OAuth quota snapshots while the popover is open. The fetch is
+    /// network-bound (up to ~30s when a provider hangs), so failures keep the
+    /// previous payload; per-provider errors live inside each snapshot.
+    func pollAgentUsage() async {
+        while !Task.isCancelled {
+            let payload = try? await Task.detached(priority: .utility) {
+                try TBCore.agentUsage()
+            }.value
+            if Task.isCancelled { break }
+            if let payload { agentUsage = payload }
+            try? await Task.sleep(for: .seconds(60))
+        }
+    }
+
+    /// Poll the live tail (10-minute window) — drives the limits card's
+    /// "Live" badge now and the trace card in a later phase. The staticlib
+    /// re-parses at most every 10s, so this matches its cadence.
+    func pollTrace() async {
+        while !Task.isCancelled {
+            let buckets = try? await Task.detached(priority: .utility) {
+                try TBCore.usageTrace(windowSecs: 600)
+            }.value
+            if Task.isCancelled { break }
+            if let buckets { trace = buckets }
+            try? await Task.sleep(for: .seconds(10))
         }
     }
 

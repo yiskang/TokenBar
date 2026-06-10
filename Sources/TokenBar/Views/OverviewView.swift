@@ -2,10 +2,9 @@ import SwiftUI
 import TokenBarCore
 
 /// The classic TokenBar dashboard stack. The all-agent overview leads with
-/// the usage chart; a single-client tab shows that client's slice (the
-/// limits-led single-client layout lands with the agent-limits card in a
-/// later phase). Agent limits and the live-session trace cards join the
-/// stack then too.
+/// the usage chart and lists every agent's limits; a single-client tab leads
+/// with that client's limits instead. The live-session trace card joins the
+/// stack in a later phase.
 struct OverviewView: View {
     let payload: UsagePayload
     /// The active tab's client slice (all present clients on Overview).
@@ -13,18 +12,35 @@ struct OverviewView: View {
     let stats: UsageStats
     let modelReport: ModelReport?
     let colors: ModelColorMap
+    let trace: [TraceBucket]
+    let agentUsage: AgentUsagePayload?
     /// Set when this view shows a single client's slice.
     var singleClient: String?
 
     var body: some View {
         VStack(spacing: 12) {
-            UsageChartCard(
-                payload: payload, clientIds: clientIds, stats: stats, colors: colors)
-            ModelBreakdownCard(
-                report: modelReport, clientIds: clientIds, colors: colors,
-                title: singleClient.map { "\(ClientRegistry.style($0).displayName) models" }
-                    ?? "Models")
+            if let singleClient {
+                let name = ClientRegistry.style(singleClient).displayName
+                AgentLimitsCard(
+                    clients: [singleClient], trace: trace, agentUsage: agentUsage,
+                    title: "\(name) limits", note: "Session / weekly / model limits",
+                    restrict: true)
+                chart
+                ModelBreakdownCard(
+                    report: modelReport, clientIds: clientIds, colors: colors,
+                    title: "\(name) models")
+            } else {
+                chart
+                AgentLimitsCard(clients: clientIds, trace: trace, agentUsage: agentUsage)
+                ModelBreakdownCard(
+                    report: modelReport, clientIds: clientIds, colors: colors)
+            }
             StreaksCard(streaks: stats.streaks)
         }
+    }
+
+    private var chart: some View {
+        UsageChartCard(
+            payload: payload, clientIds: clientIds, stats: stats, colors: colors)
     }
 }
