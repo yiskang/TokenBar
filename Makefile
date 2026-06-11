@@ -17,3 +17,7 @@ run: rust
 clean:
 	cargo clean
 	swift package clean
+
+bundle: rust
+	swift build -c release
+	scripts/bundle.sh

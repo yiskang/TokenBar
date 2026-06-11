@@ -6,6 +6,9 @@ import PackageDescription
 let package = Package(
     name: "TokenBar",
     platforms: [.macOS(.v14)],
+    dependencies: [
+        .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.6.0"),
+    ],
     targets: [
         .target(name: "CTB", path: "Sources/CTB"),
         .target(
@@ -15,7 +18,10 @@ let package = Package(
         ),
         .executableTarget(
             name: "TokenBar",
-            dependencies: ["TokenBarCore"],
+            dependencies: [
+                "TokenBarCore",
+                .product(name: "Sparkle", package: "Sparkle"),
+            ],
             path: "Sources/TokenBar",
             resources: [
                 .copy("Resources/agent-icons"),
@@ -34,6 +40,8 @@ let package = Package(
 var rustLinkerSettings: [LinkerSetting] {
     [
         .unsafeFlags(["-L", "target/release", "-ltb_core_ffi"]),
+        // Sparkle.framework rides in Contents/Frameworks inside the .app.
+        .unsafeFlags(["-Xlinker", "-rpath", "-Xlinker", "@executable_path/../Frameworks"]),
         .linkedFramework("Security"),
         .linkedFramework("SystemConfiguration"),
         .linkedFramework("CoreFoundation"),

@@ -1,0 +1,108 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build and bundle
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          BUILD=$(git rev-list --count HEAD)
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "BUILD=$BUILD" >> "$GITHUB_ENV"
+          scripts/bundle.sh "$VERSION" "$BUILD"
+
+      - name: Archive
+        run: |
+          tar -czf "TokenBar-Beta.app.tar.gz" -C dist "TokenBar Beta.app"
+          shasum -a 256 "TokenBar-Beta.app.tar.gz" | awk '{print $1}' > sha256.txt
+          echo "SHA256=$(cat sha256.txt)" >> "$GITHUB_ENV"
+
+      - name: Sign and build appcast
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        run: |
+          umask 077
+          printf '%s' "$SPARKLE_PRIVATE_KEY" > /tmp/sparkle_ed.key
+          scripts/make_appcast.sh "TokenBar-Beta.app.tar.gz" "$VERSION" "$BUILD" "$GITHUB_REF_NAME" /tmp/sparkle_ed.key
+          rm -f /tmp/sparkle_ed.key
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PRERELEASE_FLAG=""
+          case "$VERSION" in *-*) PRERELEASE_FLAG="--prerelease";; esac
+          gh release create "$GITHUB_REF_NAME" \
+            "TokenBar-Beta.app.tar.gz" \
+            --title "TokenBar Native $VERSION" \
+            --generate-notes $PRERELEASE_FLAG
+
+      - name: Publish appcast to main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git checkout main
+          git add appcast.xml
+          git commit -m "chore(release): appcast for $GITHUB_REF_NAME" || exit 0
+          git push origin main
+
+      - name: Bump Homebrew cask (tokenbar@beta)
+        env:
+          HOMEBREW_TAP_DEPLOY_KEY: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
+        run: |
+          umask 077
+          printf '%s\n' "$HOMEBREW_TAP_DEPLOY_KEY" > /tmp/tap_deploy_key
+          export GIT_SSH_COMMAND="ssh -i /tmp/tap_deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+          git clone git@github.com:Nanako0129/homebrew-tokenbar.git /tmp/tap
+          cat > "/tmp/tap/Casks/tokenbar@beta.rb" <<CASK
+          cask "tokenbar@beta" do
+            version "$VERSION"
+            sha256 "$SHA256"
+
+            url "https://github.com/Nanako0129/TokenBar-Native/releases/download/v#{version}/TokenBar-Beta.app.tar.gz"
+            name "TokenBar Beta"
+            desc "Menubar dashboard for local AI token usage (native beta)"
+            homepage "https://github.com/Nanako0129/TokenBar-Native"
+
+            auto_updates true
+            depends_on macos: ">= :sonoma"
+            depends_on arch: :arm64
+
+            app "TokenBar Beta.app"
+
+            postflight do
+              system_command "/usr/bin/xattr",
+                args: ["-dr", "com.apple.quarantine", "#{appdir}/TokenBar Beta.app"]
+            end
+
+            zap trash: [
+              "~/Library/Application Support/com.nyanako.tokenbar.beta",
+              "~/Library/Caches/com.nyanako.tokenbar.beta",
+              "~/Library/Preferences/com.nyanako.tokenbar.beta.plist",
+            ]
+          end
+          CASK
+          cd /tmp/tap
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Casks
+          git commit -m "tokenbar@beta $VERSION"
+          git push
+          rm -f /tmp/tap_deploy_key

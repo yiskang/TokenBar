@@ -13,6 +13,8 @@ struct SettingsPanel: View {
     @AppStorage(TrayAnimator.styleKey) private var animationStyle = "cat"
     @AppStorage(IconColoring.storageKey) private var iconColoringRaw = IconColoring.warningOnly.rawValue
     @AppStorage(TrayAnimator.quotaSourceKey) private var quotaSource = QuotaResolver.auto
+    /// Mirrors SMAppService's actual state (read once per panel appearance).
+    @State private var autostartEnabled = AutostartService.isAvailable && AutostartService.isEnabled
     @AppStorage("tokenbar.limits.asUsed") private var limitsAsUsed = false
     @AppStorage("tokenbar.limits.paceMode") private var paceModeRaw = PaceMode.historical.rawValue
     @AppStorage("tokenbar.limits.layout") private var layoutRaw = LimitsLayout.full.rawValue
@@ -27,6 +29,20 @@ struct SettingsPanel: View {
                 radioGroup(
                     selection: $trayModeRaw,
                     options: TrayMode.allCases.map { ($0.rawValue, $0.label) })
+            }
+
+            if AutostartService.isAvailable {
+                section("Startup") {
+                    toggleRow(
+                        "Launch at login",
+                        isOn: Binding(
+                            get: { autostartEnabled },
+                            set: { next in
+                                if AutostartService.setEnabled(next) {
+                                    autostartEnabled = next
+                                }
+                            }))
+                }
             }
 
             section("Menubar icon") {
@@ -86,6 +102,12 @@ struct SettingsPanel: View {
                     Text(AppInfo.version)
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                }
+                if UpdaterService.isAvailable {
+                    row("Check for updates") {
+                        Button("Check Now") { UpdaterService.checkForUpdates() }
+                            .controlSize(.small)
+                    }
                 }
                 hint("TokenBar began as a fork of tokcat by handlecusion. Parsing & pricing come from tokscale by Junho Yeo; the menu-bar patterns reference CodexBar by Peter Steinberger. MIT licensed.")
             }
