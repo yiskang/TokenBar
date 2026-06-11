@@ -52,10 +52,19 @@ enum BridgeBuild {
         return !v.hasPrefix("0.") && !v.contains("-beta")
     }
 
-    /// Run the cask install in Terminal, then quit so the freshly-installed
-    /// release app (same data dir, settings imported on first launch) takes
-    /// over. Beta installs always have Homebrew — that's how they got here.
+    /// Graduate to the release app. If it's already installed (e.g. the user
+    /// also came over via the Tauri updater), just launch it and quit —
+    /// running `brew install` would fail "already installed". Otherwise run
+    /// the cask install in Terminal (beta installs always have Homebrew —
+    /// that's how they got here), then quit so the freshly-installed release
+    /// app (same data dir, settings imported on first launch) takes over.
     static func switchToRelease() {
+        let releasePath = "/Applications/TokenBar.app"
+        if FileManager.default.fileExists(atPath: releasePath) {
+            NSWorkspace.shared.open(URL(fileURLWithPath: releasePath))
+            NSApp.terminate(nil)
+            return
+        }
         let script = """
         tell application "Terminal"
             activate

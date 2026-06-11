@@ -19,6 +19,7 @@ struct PopoverView: View {
     @State private var cmdHintTask: Task<Void, Never>?
     @AppStorage("tokenbar.chart.view") private var chartViewRaw = "2d"
     @AppStorage("tokenbar.view") private var activeViewRaw = AppView.overview.rawValue
+    @AppStorage("tokenbar.bridge.dismissed") private var bridgeDismissed = false
     /// "overview" or a client id. Not persisted, matching the Tauri app.
     /// `--tab=<id>` preselects a client tab (debug/screenshot aid).
     @State private var activeTab =
@@ -35,7 +36,7 @@ struct PopoverView: View {
     var body: some View {
         VStack(spacing: 0) {
             header
-            if BridgeBuild.isActive {
+            if BridgeBuild.isActive && !bridgeDismissed {
                 bridgeBanner
             }
             if !showSettings {
@@ -122,6 +123,15 @@ struct PopoverView: View {
             Button("Switch") { BridgeBuild.switchToRelease() }
                 .controlSize(.small)
                 .buttonStyle(.borderedProminent)
+            Button {
+                bridgeDismissed = true
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+            .help("Dismiss")
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
