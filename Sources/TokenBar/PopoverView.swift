@@ -226,6 +226,17 @@ struct PopoverView: View {
                 .font(.caption)
                 .foregroundStyle(.tertiary)
             Spacer()
+            if let version = UpdaterService.shared.availableVersion {
+                Button {
+                    UpdaterService.shared.checkForUpdates()
+                } label: {
+                    Label("Update \(version)", systemImage: "arrow.down.circle.fill")
+                        .font(.caption.weight(.medium))
+                }
+                .controlSize(.small)
+                .tint(.accentColor)
+                .help("A new version is ready — click to install")
+            }
             Button {
                 showSettings.toggle()
             } label: {

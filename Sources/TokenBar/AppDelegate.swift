@@ -17,7 +17,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
-        _ = UpdaterService.controller // arm Sparkle when bundled
+        _ = UpdaterService.shared // arm Sparkle when bundled
 
         let controller = StatusItemController()
         statusController = controller

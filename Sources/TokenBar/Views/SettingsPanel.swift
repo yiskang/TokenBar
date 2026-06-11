@@ -105,7 +105,7 @@ struct SettingsPanel: View {
                 }
                 if UpdaterService.isAvailable {
                     row("Check for updates") {
-                        Button("Check Now") { UpdaterService.checkForUpdates() }
+                        Button("Check Now") { UpdaterService.shared.checkForUpdates() }
                             .controlSize(.small)
                     }
                 }
