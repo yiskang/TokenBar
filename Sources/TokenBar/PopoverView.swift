@@ -100,10 +100,44 @@ struct PopoverView: View {
                 .font(.headline)
             Spacer()
             liveRateBadge
+            if !showSettings {
+                yearMenu
+            }
             refreshButton
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
+    }
+
+    /// Year filter for every lens — the Tauri HeaderBar's year select. "All"
+    /// (nil) is the native default; concrete years come from the payloads
+    /// seen so far.
+    @ViewBuilder private var yearMenu: some View {
+        if !model.knownYears.isEmpty {
+            Menu {
+                Picker("Year", selection: Binding(
+                    get: { model.year ?? "" },
+                    set: { value in
+                        Task { await model.setYear(value.isEmpty ? nil : value) }
+                    }
+                )) {
+                    Text("All years").tag("")
+                    ForEach(model.knownYears, id: \.self) { year in
+                        Text(year).tag(year)
+                    }
+                }
+                .pickerStyle(.inline)
+                .labelsHidden()
+            } label: {
+                Text(model.year ?? "All")
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.visible)
+            .fixedSize()
+            .help("Filter usage by year")
+        }
     }
 
     /// Shown only on the final beta build (1.0 on the .beta id): one tap runs
@@ -236,7 +270,7 @@ struct PopoverView: View {
                     payload: payload, clientIds: clientIds, stats: activeStats,
                     modelReport: model.modelReport, colors: model.colors,
                     trace: model.trace, agentUsage: model.agentUsage,
-                    singleClient: singleClient)
+                    singleClient: singleClient, year: model.year)
             case .models:
                 ModelsView(
                     report: model.modelReport, clientIds: clientIds, colors: model.colors)
@@ -249,7 +283,8 @@ struct PopoverView: View {
             case .stats:
                 StatsView(
                     payload: payload, clientIds: clientIds, stats: activeStats,
-                    modelReport: model.modelReport, colors: model.colors)
+                    modelReport: model.modelReport, colors: model.colors,
+                    year: model.year)
             case .agents:
                 AgentsView(report: model.agents, clientIds: clientIds)
             }

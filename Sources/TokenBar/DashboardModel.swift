@@ -23,6 +23,16 @@ enum AppView: String, CaseIterable {
     }
 
     private(set) var phase: Phase = .loading
+    /// Year filter for every lens (HeaderBar's year select in the Tauri app);
+    /// nil = all time. Not persisted, matching the web app's useState.
+    /// `--year=<yyyy>` preselects a year (debug/screenshot aid).
+    private(set) var year: String? =
+        CommandLine.arguments
+            .first(where: { $0.hasPrefix("--year=") })
+            .map { String($0.dropFirst("--year=".count)) }
+    /// Union of `payload.years` across loads — a year-filtered payload only
+    /// reports the selected year, so remember the rest for the picker.
+    private(set) var knownYears: [String] = []
     private(set) var payload: UsagePayload?
     private(set) var stats: UsageStats?
     private(set) var modelReport: ModelReport?
@@ -35,19 +45,16 @@ enum AppView: String, CaseIterable {
     /// TBCore is blocking — every fetch hops off the main actor.
     func load() async {
         do {
+            let year = self.year
             async let payloadTask = Task.detached(priority: .userInitiated) {
-                try TBCore.graph()
+                try TBCore.graph(year: year)
             }.value
             async let reportTask = Task.detached(priority: .userInitiated) {
-                try? TBCore.modelReport()
+                try? TBCore.modelReport(year: year)
             }.value
             let payload = try await payloadTask
             let report = await reportTask
-            self.payload = payload
-            stats = UsageStats(payload: payload, selectedClients: Set(payload.summary.clients))
-            modelReport = report
-            colors = ModelColorMap(report: report)
-            phase = .ready
+            apply(payload: payload, report: report)
         } catch {
             // Keep showing stale data over an error screen when a previous
             // load succeeded — a transient failure must not blank the UI.
@@ -65,30 +72,51 @@ enum AppView: String, CaseIterable {
         guard !refreshing else { return }
         refreshing = true
         defer { refreshing = false }
+        await reload(force: true)
+    }
+
+    /// Switch the year filter and re-fetch every lens for the new slice.
+    /// Served from the staticlib's per-year cache when fresh, so flipping
+    /// back to a recent year is instant.
+    func setYear(_ newYear: String?) async {
+        guard newYear != year, !refreshing else { return }
+        year = newYear
+        refreshing = true
+        defer { refreshing = false }
+        await reload(force: false)
+    }
+
+    private func reload(force: Bool) async {
+        let year = self.year
         async let payloadTask = Task.detached(priority: .userInitiated) {
-            try TBCore.refreshGraph()
+            force ? try TBCore.refreshGraph(year: year) : try TBCore.graph(year: year)
         }.value
         async let reportTask = Task.detached(priority: .userInitiated) {
-            try? TBCore.modelReport()
+            try? TBCore.modelReport(year: year)
         }.value
         guard let payload = try? await payloadTask else { return }
         let report = await reportTask
-        self.payload = payload
-        stats = UsageStats(payload: payload, selectedClients: Set(payload.summary.clients))
-        modelReport = report
-        colors = ModelColorMap(report: report)
-        phase = .ready
+        apply(payload: payload, report: report)
         // Re-fetch the lazy lenses that were already loaded.
         if hourly != nil {
             hourly = await Task.detached(priority: .userInitiated) {
-                try? TBCore.hourlyReport()
+                try? TBCore.hourlyReport(year: year)
             }.value
         }
         if agents != nil {
             agents = await Task.detached(priority: .userInitiated) {
-                try? TBCore.agentsReport()
+                try? TBCore.agentsReport(year: year)
             }.value
         }
+    }
+
+    private func apply(payload: UsagePayload, report: ModelReport?) {
+        self.payload = payload
+        stats = UsageStats(payload: payload, selectedClients: Set(payload.summary.clients))
+        modelReport = report
+        colors = ModelColorMap(report: report)
+        knownYears = Set(knownYears + payload.years.map(\.year)).sorted(by: >)
+        phase = .ready
     }
 
     /// Poll the OAuth quota snapshots while the popover is open. The fetch is
@@ -121,14 +149,15 @@ enum AppView: String, CaseIterable {
 
     /// Fetch the lazy per-lens reports on first activation.
     func ensureData(for view: AppView) async {
+        let year = self.year
         switch view {
         case .hourly where hourly == nil:
             hourly = await Task.detached(priority: .userInitiated) {
-                try? TBCore.hourlyReport()
+                try? TBCore.hourlyReport(year: year)
             }.value
         case .agents where agents == nil:
             agents = await Task.detached(priority: .userInitiated) {
-                try? TBCore.agentsReport()
+                try? TBCore.agentsReport(year: year)
             }.value
         default:
             break

@@ -10,6 +10,9 @@ struct UsageChartCard: View {
     let clientIds: [String]
     let stats: UsageStats
     let colors: ModelColorMap
+    /// Dashboard year filter; nil (all time) falls back to the current year
+    /// for the 3D grid, which is inherently single-year.
+    var year: String?
 
     @AppStorage("tokenbar.chart.stackBy") private var stackByRaw = StackBy.model.rawValue
     @AppStorage("tokenbar.chart.metric") private var metricRaw = ChartMetric.tokens.rawValue
@@ -51,7 +54,7 @@ struct UsageChartCard: View {
                 // legend + chart + axis block so the card doesn't jump.
                 ContributionGraph3D(
                     grid: buildGrid(
-                        year: String(Format.todayKey().prefix(4)),
+                        year: year ?? String(Format.todayKey().prefix(4)),
                         perDayMap: stats.perDayMap)
                 )
                 .frame(height: 196)
