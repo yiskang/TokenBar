@@ -3,30 +3,24 @@
   <channel>
     <title>TokenBar updates</title>
     <item>
-      <title>1.0.1</title>
-      <pubDate>Thu, 11 Jun 2026 21:09:13 +0000</pubDate>
-      <sparkle:version>79</sparkle:version>
-      <sparkle:shortVersionString>1.0.1</sparkle:shortVersionString>
+      <title>1.0.0</title>
+      <pubDate>Thu, 11 Jun 2026 15:33:37 +0000</pubDate>
+      <sparkle:version>66</sparkle:version>
+      <sparkle:shortVersionString>1.0.0</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
 
-      <link>https://github.com/Nanako0129/TokenBar/releases/tag/v1.0.1</link>
+      <link>https://github.com/Nanako0129/TokenBar/releases/tag/v1.0.0-bridge</link>
       <description><![CDATA[
-<b>Fixes:</b>
-<ul>
-<li>Dismissable upgrade banner now correctly handles already-installed releases</li>
-<li>The Switch tool now runs via a .command file instead of AppleScript for improved reliability</li>
-<li>Claude OAuth usage now backs off on 429 rate limits and keeps the last successful snapshot</li>
-</ul>
 <b>New:</b>
 <ul>
-<li>Added an install-count badge to the project README powered by GitHub Actions</li>
-<li>Migrated the landing site to Astro from TokenBar-Tauri</li>
+<li>This moves you from the beta app to TokenBar 1.0.</li>
+<li>A Switch button appears in the popover — click it to install the release build (your data and settings carry over).</li>
 </ul>
       ]]></description>
       <enclosure
-        url="https://github.com/Nanako0129/TokenBar/releases/download/v1.0.1/TokenBar.app.tar.gz"
-        sparkle:edSignature="XQFPEpsVqdrVKX32urRIXroLKcP4ApdL2EspW8o9eb49l88ifvs1rTJcADx+tTA9aOMmhb2MqOXKGXHaNlXfAQ=="
-        length="6604787"
+        url="https://github.com/Nanako0129/TokenBar/releases/download/v1.0.0-bridge/TokenBar-Beta.app.tar.gz"
+        sparkle:edSignature="4pkxSDd0Xy/lJdoZ3agODgpQctdclhtjIG8nFwVIlBav2RR0sFh4pJbTV/ngr/aJNBGBLcrReYbEglOojyZjBw=="
+        length="6538668"
         type="application/octet-stream"/>
     </item>
   </channel>
