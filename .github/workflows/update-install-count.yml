@@ -1,8 +1,15 @@
 name: Update install count
 
+# Note: `release: published` never fires for our own releases — they are
+# created by release.yml with the default GITHUB_TOKEN, whose events do not
+# trigger workflows (recursion guard). release.yml dispatches this workflow
+# explicitly instead (workflow_dispatch is exempt from that guard), and the
+# daily cron keeps the count fresh between releases.
 on:
   release:
     types: [published]
+  schedule:
+    - cron: "17 3 * * *"
   workflow_dispatch:
 
 permissions:
@@ -28,4 +35,12 @@ jobs:
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add docs/install-count.json
-          git diff --staged --quiet || git commit -m "chore: update install count" && git push
+          if git diff --staged --quiet; then
+            echo "count unchanged"
+            exit 0
+          fi
+          git commit -m "chore: update install count"
+          # main may have moved (e.g. the appcast commit lands right after a
+          # release) — rebase our one commit instead of failing the push.
+          git pull --rebase origin main
+          git push

@@ -105,6 +105,13 @@ jobs:
           git commit -m "chore(release): appcast for $GITHUB_REF_NAME" || exit 0
           git push origin main
 
+      # `on: release` never fires downstream for GITHUB_TOKEN-created
+      # releases (recursion guard) — dispatch the badge refresh explicitly.
+      - name: Refresh install-count badge
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run update-install-count.yml --ref main
+
       # Prereleases ship via the Sparkle beta channel only — no cask bump.
       - name: Bump Homebrew cask (tokenbar)
         if: ${{ !contains(github.ref_name, '-') }}
