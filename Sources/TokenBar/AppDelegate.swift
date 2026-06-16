@@ -60,6 +60,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         titleRefreshTask?.cancel()
         trayAnimator?.stop()
         if let defaultsObserver { NotificationCenter.default.removeObserver(defaultsObserver) }
+        // Remove the status item / close the popover so ControlCenter tears
+        // the menu-bar item down cleanly (avoids the ~40s RunningBoard
+        // "waiting on exit context" stall seen on the 2026-06-16 quit).
+        statusController?.tearDown()
     }
 
     /// Compose the tray title from the cached data and the current settings.

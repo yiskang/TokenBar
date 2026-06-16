@@ -115,6 +115,19 @@ final class StatusItemController: NSObject {
         popover.performClose(nil)
     }
 
+    /// Clean teardown on app termination: drop the defaults observer, close
+    /// the popover, and remove the status item so ControlCenter tears the
+    /// menu-bar item down via a normal removal instead of an abrupt
+    /// connection-invalidation — the latter left RunningBoard "waiting on
+    /// exit context" for ~40s on quit (seen in the 2026-06-16 freeze logs).
+    func tearDown() {
+        if let defaultsObserver { NotificationCenter.default.removeObserver(defaultsObserver) }
+        defaultsObserver = nil
+        if popover.isShown { popover.performClose(nil) }
+        popover.contentViewController = nil
+        NSStatusBar.system.removeStatusItem(statusItem)
+    }
+
     @objc private func togglePopover(_ sender: Any?) {
         if NSApp.currentEvent?.type == .rightMouseUp {
             showQuotaMenu()
