@@ -10,10 +10,22 @@ final class SettingsWindowController {
     static let shared = SettingsWindowController()
 
     private var window: NSWindow?
+    // AnyView so the live UI can be swapped for a static placeholder on close.
+    private var host: NSHostingController<AnyView>?
+    private var closeObserver: NSObjectProtocol?
 
     func show() {
-        let window = self.window ?? makeWindow()
+        let existing = self.window
+        let window = existing ?? makeWindow()
         self.window = window
+        // Reopening a kept-alive window: reinstall the live settings UI that
+        // the previous close swapped out for a static placeholder. (Closing
+        // only orders the window out; leaving the live content mounted let its
+        // preview TimelineView(.periodic) keep re-rendering off-screen at up
+        // to 40fps and pin a core in the background — the chronic CPU spin.)
+        if existing != nil {
+            host?.rootView = AnyView(SettingsWindowView())
+        }
         let firstShow = !window.isVisible
         // Accessory apps are never frontmost; activate or the window opens
         // behind whatever app currently has focus.
@@ -40,7 +52,8 @@ final class SettingsWindowController {
     }
 
     private func makeWindow() -> NSWindow {
-        let host = NSHostingController(rootView: SettingsWindowView())
+        let host = NSHostingController(rootView: AnyView(SettingsWindowView()))
+        self.host = host
         let window = NSWindow(contentViewController: host)
         // NSWindow(contentViewController:) sizes lazily (the frame is still
         // 1x0 at show time, which broke the centering math) — force the
@@ -52,6 +65,17 @@ final class SettingsWindowController {
         // scroll views inset their content via the safe area.
         window.titlebarAppearsTransparent = true
         window.isReleasedWhenClosed = false
+        // Swap the live UI for a static, same-size placeholder when the window
+        // closes so its preview timelines + polling .tasks are torn down (a
+        // kept-alive closed window otherwise keeps rendering in the
+        // background); show() reinstalls the live UI on the next open.
+        closeObserver = NotificationCenter.default.addObserver(
+            forName: NSWindow.willCloseNotification, object: window, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.host?.rootView = AnyView(Color.clear.frame(width: 685, height: 580))
+            }
+        }
         // The hosting view inflates the frame by the title-bar safe area
         // (580 -> 612) in a layout pass after the first order-front that no
         // amount of layoutIfNeeded forces early — re-center once when it
