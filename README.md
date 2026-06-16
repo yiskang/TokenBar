@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/Nanako0129/TokenBar/main/docs/install-count.json&style=flat-square" alt="Total installs">
+  <img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/Nanako0129/TokenBar/badges/install-count.json&style=flat-square" alt="Total installs">
   <img src="https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square" alt="MIT Licence">
   <img src="https://img.shields.io/badge/macOS-14%2B-black?style=flat-square&logo=apple" alt="macOS 14+">
   <img src="https://img.shields.io/badge/Apple%20Silicon-arm64-success?style=flat-square" alt="Apple Silicon">

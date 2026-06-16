@@ -19,28 +19,28 @@ jobs:
   update:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Compute download count
+      # The badge JSON lives on a standalone `badges` branch, NOT on main, so
+      # these chore updates never spam main's history. The branch is rebuilt
+      # from scratch and force-pushed every run, so it always holds exactly one
+      # commit. Shields reads it via the raw URL for the `badges` ref.
+      - name: Compute and publish download count
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           COUNT=$(gh api repos/Nanako0129/TokenBar/releases \
             --jq '[.[].assets[] | select(.name | test("\\.(tar\\.gz|dmg|zip|pkg)$")) | .download_count] | add // 0')
-          echo "{\"schemaVersion\":1,\"label\":\"installs\",\"message\":\"${COUNT}\",\"color\":\"brightgreen\"}" \
-            > docs/install-count.json
+          JSON="{\"schemaVersion\":1,\"label\":\"installs\",\"message\":\"${COUNT}\",\"color\":\"brightgreen\"}"
 
-      - name: Commit
-        run: |
+          # Build the orphan branch in an isolated repo so the workspace tree is
+          # untouched and the branch carries a single commit, no shared history.
+          WORK="$(mktemp -d)"
+          cd "$WORK"
+          git init -q -b badges
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add docs/install-count.json
-          if git diff --staged --quiet; then
-            echo "count unchanged"
-            exit 0
-          fi
-          git commit -m "chore: update install count"
-          # main may have moved (e.g. the appcast commit lands right after a
-          # release) — rebase our one commit instead of failing the push.
-          git pull --rebase origin main
-          git push
+          printf '%s' "$JSON" > install-count.json
+          git add install-count.json
+          git commit -q -m "chore: update install count"
+          git push -f \
+            "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+            badges
