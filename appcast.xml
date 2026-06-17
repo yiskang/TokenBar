@@ -3,31 +3,24 @@
   <channel>
     <title>TokenBar updates</title>
     <item>
-      <title>1.0.4</title>
-      <pubDate>Tue, 16 Jun 2026 06:09:25 +0000</pubDate>
-      <sparkle:version>128</sparkle:version>
-      <sparkle:shortVersionString>1.0.4</sparkle:shortVersionString>
+      <title>1.0.5</title>
+      <pubDate>Wed, 17 Jun 2026 06:16:43 +0000</pubDate>
+      <sparkle:version>133</sparkle:version>
+      <sparkle:shortVersionString>1.0.5</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
 
-      <link>https://github.com/Nanako0129/TokenBar/releases/tag/v1.0.4</link>
+      <link>https://github.com/Nanako0129/TokenBar/releases/tag/v1.0.5</link>
       <description><![CDATA[
-<b>New:</b>
-<ul>
-<li>You can now drag to make the popover taller or shorter, and the popover is slightly wider out of the box.</li>
-</ul>
-<b>Improved:</b>
-<ul>
-<li>Closing the settings window now stops the live preview from continuously updating, reducing battery and CPU use.</li>
-</ul>
 <b>Fixes:</b>
 <ul>
-<li>Quitting the app now properly removes the menu bar icon and popover, preventing a leftover icon from appearing.</li>
+<li>The usage graph in the menu bar popover now refreshes automatically, showing current data without reopening.</li>
+<li>Scrollbars inside the popover stay as subtle overlays and no longer shift the content when they appear.</li>
 </ul>
       ]]></description>
       <enclosure
-        url="https://github.com/Nanako0129/TokenBar/releases/download/v1.0.4/TokenBar.app.tar.gz"
-        sparkle:edSignature="wUpw5lsyoMUv5gj+z2wCZRTTn8s+CQGhnN6UgCF0O1UxO21hv5XzNqSxbs4kx4nFciAIDQ1bsRz1ZnxOETZhBQ=="
-        length="6812127"
+        url="https://github.com/Nanako0129/TokenBar/releases/download/v1.0.5/TokenBar.app.tar.gz"
+        sparkle:edSignature="UIgmjJCLazYxOZlEwr4PQnvlE9nngruOjGCjNKlxRbzAhAptU8TXKIkgabZm0KuIq+mVasnyqbG33Yb7VP9uBA=="
+        length="6822817"
         type="application/octet-stream"/>
     </item>
   </channel>
