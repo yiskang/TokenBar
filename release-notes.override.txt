@@ -1,8 +1,0 @@
-New:
-- Brand logos for the Cline, jcode, MiMo Code, and gjc tabs, instead of a letter badge.
-
-Improved:
-- The client-tab row now scrolls with a plain vertical mouse wheel, so a mouse without a horizontal-scroll wheel can reach every tab.
-
-Fixes:
-- Antigravity CLI now shows the shared Antigravity quota instead of an empty or duplicate limit card.
