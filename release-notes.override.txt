@@ -1,0 +1,2 @@
+Improved:
+- Much lower background CPU usage. The log-parsing engine no longer keeps a worker thread spinning for every CPU core, and the popover pauses its polling while it is closed, so TokenBar stops holding a CPU core busy in the background.
