@@ -1,16 +1,30 @@
-<?xml version="1.0" encoding="utf-8"?>
-<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
-  <channel>
-    <title>TokenBar updates</title>
-    <item>
-      <title>1.1.1</title>
-      <pubDate>Mon, 22 Jun 2026 03:49:29 +0000</pubDate>
-      <sparkle:version>156</sparkle:version>
-      <sparkle:shortVersionString>1.1.1</sparkle:shortVersionString>
-      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-
-      <link>https://github.com/Nanako0129/TokenBar/releases/tag/v1.1.1</link>
-      <description><![CDATA[
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+    <channel>
+        <title>TokenBar updates</title>
+        <item>
+            <title>1.1.2</title>
+            <pubDate>Wed, 24 Jun 2026 16:52:16 +0000</pubDate>
+            <link>https://github.com/Nanako0129/TokenBar/releases/tag/v1.1.2</link>
+            <sparkle:version>168</sparkle:version>
+            <sparkle:shortVersionString>1.1.2</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description><![CDATA[<b>Improved:</b>
+<ul>
+<li>Much lower background CPU usage. The log-parsing engine no longer keeps a worker thread spinning for every CPU core, and the popover pauses its polling while it is closed, so TokenBar stops holding a CPU core busy in the background.</li>
+</ul>
+]]></description>
+            <enclosure url="https://github.com/Nanako0129/TokenBar/releases/download/v1.1.2/TokenBar.app.tar.gz" length="7063455" type="application/octet-stream" sparkle:edSignature="QmNdIpbY2reHfX+zh+ry+tWFrg4mFKqGagPWIFHurjMnC1Kw5nxmZ47cliS4aIwOMr9CSEA2bPLICpB56IyWBw=="/>
+        </item>
+        <item>
+            <title>1.1.1</title>
+            <pubDate>Mon, 22 Jun 2026 03:49:29 +0000</pubDate>
+            <sparkle:version>156</sparkle:version>
+            <sparkle:shortVersionString>1.1.1</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <link>https://github.com/Nanako0129/TokenBar/releases/tag/v1.1.1</link>
+            <description><![CDATA[
 <b>New:</b>
 <ul>
 <li>Brand logos for the Cline, jcode, MiMo Code, and gjc tabs, instead of a letter badge.</li>
@@ -24,21 +38,16 @@
 <li>Antigravity CLI now shows the shared Antigravity quota instead of an empty or duplicate limit card.</li>
 </ul>
       ]]></description>
-      <enclosure
-        url="https://github.com/Nanako0129/TokenBar/releases/download/v1.1.1/TokenBar.app.tar.gz"
-        sparkle:edSignature="MNmT0IGSzsygl+57HwlaSHQvLgKkaEs74mF26Yi2IVeJzi3TbERywkTY6Wy2qygegYjCAife4pOsELBwGQApBQ=="
-        length="7047740"
-        type="application/octet-stream"/>
-    </item>
-    <item>
-      <title>1.1.0</title>
-      <pubDate>Sun, 21 Jun 2026 18:15:56 +0000</pubDate>
-      <sparkle:version>151</sparkle:version>
-      <sparkle:shortVersionString>1.1.0</sparkle:shortVersionString>
-      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-
-      <link>https://github.com/Nanako0129/TokenBar/releases/tag/v1.1.0</link>
-      <description><![CDATA[
+            <enclosure url="https://github.com/Nanako0129/TokenBar/releases/download/v1.1.1/TokenBar.app.tar.gz" sparkle:edSignature="MNmT0IGSzsygl+57HwlaSHQvLgKkaEs74mF26Yi2IVeJzi3TbERywkTY6Wy2qygegYjCAife4pOsELBwGQApBQ==" length="7047740" type="application/octet-stream"/>
+        </item>
+        <item>
+            <title>1.1.0</title>
+            <pubDate>Sun, 21 Jun 2026 18:15:56 +0000</pubDate>
+            <sparkle:version>151</sparkle:version>
+            <sparkle:shortVersionString>1.1.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <link>https://github.com/Nanako0129/TokenBar/releases/tag/v1.1.0</link>
+            <description><![CDATA[
 <b>New:</b>
 <ul>
 <li>Tracks five more local AI coding tools: Cline, Antigravity CLI, jcode, MiMo Code, and gjc.</li>
@@ -55,11 +64,7 @@
 <li>More reliable live usage updates, including for the newly added tools.</li>
 </ul>
       ]]></description>
-      <enclosure
-        url="https://github.com/Nanako0129/TokenBar/releases/download/v1.1.0/TokenBar.app.tar.gz"
-        sparkle:edSignature="8AmcpkHvF9b7d7hR2Wk7xHMvxPtYvhKmqAYleU/9HSBQassIVVwZ2G+3JoF8OPXSzz1r144CszEOKJRL+lOpDA=="
-        length="6894840"
-        type="application/octet-stream"/>
-    </item>
-  </channel>
+            <enclosure url="https://github.com/Nanako0129/TokenBar/releases/download/v1.1.0/TokenBar.app.tar.gz" sparkle:edSignature="8AmcpkHvF9b7d7hR2Wk7xHMvxPtYvhKmqAYleU/9HSBQassIVVwZ2G+3JoF8OPXSzz1r144CszEOKJRL+lOpDA==" length="6894840" type="application/octet-stream"/>
+        </item>
+    </channel>
 </rss>
