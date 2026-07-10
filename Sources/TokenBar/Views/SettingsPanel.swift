@@ -20,6 +20,7 @@ struct SettingsPanel: View {
     @AppStorage("tokenbar.updates.beta") private var betaUpdates = false
     /// Mirrors SMAppService's actual state (read once per panel appearance).
     @State private var autostartEnabled = AutostartService.isAvailable && AutostartService.isEnabled
+    @AppStorage("tokenbar.limits.enabled") private var limitsEnabled = true
     @AppStorage("tokenbar.limits.asUsed") private var limitsAsUsed = false
     @AppStorage("tokenbar.limits.paceMode") private var paceModeRaw = PaceMode.historical.rawValue
     @AppStorage("tokenbar.limits.layout") private var layoutRaw = LimitsLayout.full.rawValue
@@ -32,6 +33,8 @@ struct SettingsPanel: View {
     // New for tabs improvement
     @AppStorage(ClientRegistry.tabOrderKey) private var tabsOrderRaw = ""
     @AppStorage(ClientRegistry.tabHiddenKey) private var tabsHiddenRaw = ""
+    /// Per-client Agent-limits visibility, independent of tab visibility.
+    @AppStorage(ClientRegistry.limitsHiddenKey) private var limitsHiddenRaw = ""
 
     // Drag state for client tabs reorder (scoped to this panel)
     @State private var tabsDragId: String?
@@ -122,36 +125,81 @@ struct SettingsPanel: View {
             }
 
             section("Agent limits") {
-                toggleRow("Show as used", isOn: $limitsAsUsed)
-                hint("On, bars count up as quota is used; off, they count down to what's left. The color always warns as quota runs low.")
-                radioGroup(
-                    selection: $layoutRaw,
-                    options: LimitsLayout.allCases.map { ($0.rawValue, "Layout: \($0.rawValue.capitalized)") })
-                hint("Full is the wide card with the pace line; Classic is the original compact layout without pace.")
-                if LimitsLayout(rawValue: layoutRaw) != .classic {
+                toggleRow("Show Agent limits card", isOn: $limitsEnabled)
+                hint("Off hides the Agent-limits quota card everywhere — the Overview summary, every client's own tab, and this preview. Cost/token data is unaffected.")
+
+                if limitsEnabled {
+                    toggleRow("Show as used", isOn: $limitsAsUsed)
+                    hint("On, bars count up as quota is used; off, they count down to what's left. The color always warns as quota runs low.")
                     radioGroup(
-                        selection: $paceModeRaw,
-                        options: PaceMode.allCases.map { ($0.rawValue, "Pace: \($0.rawValue.capitalized)") })
-                    hint("The deficit/reserve marker. Historical learns your weekly usage curve and shows run-out risk, falling back to linear until enough weeks accrue; Linear paces evenly by the clock; Off hides the marker.")
+                        selection: $layoutRaw,
+                        options: LimitsLayout.allCases.map { ($0.rawValue, "Layout: \($0.rawValue.capitalized)") })
+                    hint("Full is the wide card with the pace line; Classic is the original compact layout without pace.")
+                    if LimitsLayout(rawValue: layoutRaw) != .classic {
+                        radioGroup(
+                            selection: $paceModeRaw,
+                            options: PaceMode.allCases.map { ($0.rawValue, "Pace: \($0.rawValue.capitalized)") })
+                        hint("The deficit/reserve marker. Historical learns your weekly usage curve and shows run-out risk, falling back to linear until enough weeks accrue; Linear paces evenly by the clock; Off hides the marker.")
+                    }
+
+                    let knownClients = ClientRegistry.orderedClients(
+                        AgentLimitsCard.knownClientIds(agentUsage: agentUsage, present: presentClients))
+                    if !knownClients.isEmpty {
+                        let limitsHiddenSet = Set(
+                            limitsHiddenRaw.isEmpty ? [] : limitsHiddenRaw.split(separator: ",").map(String.init))
+                        // A tab hidden below always hides its quota card too — the
+                        // toggle here reflects that (off + disabled) rather than
+                        // offering a state the card can never actually reach.
+                        let tabHiddenSet = Set(tabsHiddenRaw.isEmpty ? [] : tabsHiddenRaw.split(separator: ",").map(String.init))
+                        Divider()
+                        VStack(spacing: 1) {
+                            ForEach(knownClients, id: \.self) { id in
+                                let tabHidden = tabHiddenSet.contains(id)
+                                HStack {
+                                    HStack(spacing: 6) {
+                                        AgentIconView(clientId: id, size: 14)
+                                        Text(ClientRegistry.shortName(id))
+                                            .font(.caption)
+                                    }
+                                    Spacer()
+                                    Toggle("", isOn: Binding(
+                                        get: { !tabHidden && !limitsHiddenSet.contains(id) },
+                                        set: { show in
+                                            var hidden = limitsHiddenSet
+                                            if show {
+                                                hidden.remove(id)
+                                            } else {
+                                                hidden.insert(id)
+                                            }
+                                            limitsHiddenRaw = hidden.sorted().joined(separator: ",")
+                                        }
+                                    ))
+                                    .disabled(tabHidden)
+                                    .toggleStyle(.switch)
+                                    .controlSize(.mini)
+                                    .labelsHidden()
+                                }
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 7)
+                                .opacity(tabHidden ? 0.5 : 1)
+                            }
+                        }
+                        .glassCard(cornerRadius: 8)
+                        hint("Hides only that client's quota card here and on its own tab — the tab and its cost/token data stay visible. Useful for accounts with no OAuth quota (e.g. Claude Console). Grayed out when the tab itself is hidden below, since a hidden tab always hides its quota card too.")
+                    }
                 }
             }
 
             section("Client tabs (top bar)") {
                 let hiddenSet = Set(tabsHiddenRaw.isEmpty ? [] : tabsHiddenRaw.split(separator: ",").map(String.init))
 
-                // Master order: show ALL present clients (checked or unchecked) sorted by saved order.
-                // Hidden ones remain visible in settings so you can always reorder them.
-                let order = tabsOrderRaw.isEmpty ? [] : tabsOrderRaw.split(separator: ",").map(String.init)
-                let fullOrdered = presentClients.sorted { a, b in
-                    let ia = order.firstIndex(of: a) ?? Int.max
-                    let ib = order.firstIndex(of: b) ?? Int.max
-                    if ia == ib {
-                        return presentClients.firstIndex(of: a)! < presentClients.firstIndex(of: b)!
-                    }
-                    return ia < ib
-                }
+                // Master order: every client that can appear in the top bar
+                // OR the Agent-limits card (checked or unchecked, present or
+                // quota-only like Antigravity), sorted by saved order.
+                let fullOrdered = ClientRegistry.orderedClients(
+                    AgentLimitsCard.knownClientIds(agentUsage: agentUsage, present: presentClients))
 
-                if presentClients.isEmpty {
+                if fullOrdered.isEmpty {
                     Text("No clients with usage data yet.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -161,7 +209,7 @@ struct SettingsPanel: View {
                             .font(.caption2)
                             .foregroundStyle(.secondary)
 
-                        VStack(spacing: 4) {
+                        VStack(spacing: 1) {
                             ForEach(fullOrdered, id: \.self) { id in
                                 let isVisible = !hiddenSet.contains(id)
                                 HStack(spacing: 8) {
@@ -172,7 +220,13 @@ struct SettingsPanel: View {
                                         .help("Drag to reorder")
                                         .gesture(dragGestureForTab(id: id, orderList: fullOrdered))
 
-                                    Toggle(isOn: Binding(
+                                    AgentIconView(clientId: id, size: 14)
+                                    Text(ClientRegistry.shortName(id))
+                                        .font(.caption)
+
+                                    Spacer()
+
+                                    Toggle("", isOn: Binding(
                                         get: { isVisible },
                                         set: { show in
                                             var hidden = hiddenSet
@@ -183,22 +237,13 @@ struct SettingsPanel: View {
                                             }
                                             tabsHiddenRaw = hidden.sorted().joined(separator: ",")
                                         }
-                                    )) {
-                                        HStack(spacing: 6) {
-                                            AgentIconView(clientId: id, size: 14)
-                                            Text(ClientRegistry.shortName(id))
-                                                .font(.caption)
-                                            if !isVisible {
-                                                Text("(hidden)")
-                                                    .font(.caption2)
-                                                    .foregroundStyle(.secondary)
-                                            }
-                                        }
-                                    }
-                                    .toggleStyle(.checkbox)
-
-                                    Spacer()
+                                    ))
+                                    .toggleStyle(.switch)
+                                    .controlSize(.mini)
+                                    .labelsHidden()
                                 }
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 7)
                                 .opacity(tabsDragId == id ? 0.5 : 1)
                                 .overlay(alignment: dropEdge(for: id, in: fullOrdered) == .top ? .top : .bottom) {
                                     if let edge = dropEdge(for: id, in: fullOrdered) {
@@ -218,6 +263,7 @@ struct SettingsPanel: View {
                         }
                         .coordinateSpace(name: Self.tabsDragSpace)
                         .onPreferenceChange(TabsCardFramesKey.self) { tabsCardFrames = $0 }
+                        .glassCard(cornerRadius: 8)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }

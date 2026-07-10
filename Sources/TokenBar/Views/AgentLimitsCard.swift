@@ -26,6 +26,10 @@ struct AgentLimitsCard: View {
     /// order persists to UserDefaults. Only the multi-agent overview opts in.
     var reorderable = false
 
+    /// Master switch: off hides the card everywhere it's rendered (Overview
+    /// summary, single-client tabs, Settings live-preview) regardless of
+    /// per-client visibility.
+    @AppStorage("tokenbar.limits.enabled") private var limitsEnabled = true
     /// Bar fills by used (true) or remaining (false).
     @AppStorage("tokenbar.limits.asUsed") private var asUsed = false
     @AppStorage("tokenbar.limits.paceMode") private var paceModeRaw = PaceMode.historical.rawValue
@@ -34,6 +38,8 @@ struct AgentLimitsCard: View {
     /// Reordering providers in Settings → Client tabs now also reorders the
     /// quota cards shown in Overview → Agent limits (and vice-versa via drag).
     @AppStorage(ClientRegistry.tabOrderKey) private var orderRaw = ""
+    /// Per-client Agent-limits visibility, independent of tab visibility.
+    @AppStorage(ClientRegistry.limitsHiddenKey) private var limitsHiddenRaw = ""
 
     @State private var dragId: String?
     @State private var overId: String?
@@ -56,6 +62,20 @@ struct AgentLimitsCard: View {
         "Codex": "codex", "Claude": "claude", "Copilot": "copilot",
         "Gemini": "antigravity",
     ]
+
+    /// Every client id that can show a row in the multi-agent Agent-limits
+    /// card: `present` clients (local session data) plus anything with a
+    /// placeholder row or a live quota snapshot. Some agents (e.g.
+    /// Antigravity) report OAuth quota with no local session logs, so they
+    /// wouldn't otherwise appear in `present` — Settings needs this superset
+    /// to offer a hide toggle for them too.
+    static func knownClientIds(agentUsage: AgentUsagePayload?, present: [String]) -> [String] {
+        let snapshotIds = Set((agentUsage?.agents ?? []).map(\.clientId))
+        func known(_ id: String) -> Bool { placeholderRows[id] != nil || snapshotIds.contains(id) }
+        var seen = Set<String>()
+        return (present.filter(known) + (agentUsage?.agents.map(\.clientId) ?? []))
+            .filter { seen.insert($0).inserted }
+    }
 
     private var snapshots: [String: AgentUsageSnapshot] {
         var dict = Dictionary(
@@ -100,9 +120,13 @@ struct AgentLimitsCard: View {
         var base = (clients.filter(known) + (agentUsage?.agents.map(\.clientId) ?? []))
             .filter { seen.insert($0).inserted }
 
-        // Apply the same hide logic as Client tabs: hidden providers should not appear in limits cards either.
+        // Apply the same hide logic as Client tabs, plus the independent
+        // per-client Agent-limits toggle: either one keeps a client out of
+        // the multi-agent limits card.
         if reorderable {
-            let hidden = ClientRegistry.hiddenClients()
+            let limitsHidden = Set(
+                limitsHiddenRaw.isEmpty ? [] : limitsHiddenRaw.split(separator: ",").map(String.init))
+            let hidden = ClientRegistry.hiddenClients().union(limitsHidden)
             base = base.filter { !hidden.contains($0) }
         }
         return base
@@ -122,31 +146,33 @@ struct AgentLimitsCard: View {
     }
 
     var body: some View {
-        DashCard(title, trailing: { noteLabel }) {
-            if opencodeView {
-                integrationLine("↔ Routes through opencode")
-            } else if !restrict && !opencodeSubs.isEmpty {
-                integrationLine("opencode also taps: \(opencodeSubs.joined(separator: " · "))")
-            }
-            let visible = visibleClients
-            if visible.isEmpty {
-                Text(
-                    opencodeView && !opencodeSubs.isEmpty
-                        ? "Subscriptions: \(opencodeSubs.joined(separator: " · "))"
-                        : "No supported agents yet"
-                )
-                .font(.caption)
-                .foregroundStyle(.tertiary)
-                .frame(maxWidth: .infinity, alignment: .center)
-                .padding(.vertical, 8)
-            } else {
-                VStack(spacing: 12) {
-                    ForEach(visible, id: \.self) { id in
-                        agentSection(id, visible: visible)
-                    }
+        if limitsEnabled {
+            DashCard(title, trailing: { noteLabel }) {
+                if opencodeView {
+                    integrationLine("↔ Routes through opencode")
+                } else if !restrict && !opencodeSubs.isEmpty {
+                    integrationLine("opencode also taps: \(opencodeSubs.joined(separator: " · "))")
                 }
-                .coordinateSpace(name: Self.dragSpace)
-                .onPreferenceChange(CardFramesKey.self) { cardFrames = $0 }
+                let visible = visibleClients
+                if visible.isEmpty {
+                    Text(
+                        opencodeView && !opencodeSubs.isEmpty
+                            ? "Subscriptions: \(opencodeSubs.joined(separator: " · "))"
+                            : "No supported agents yet"
+                    )
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 8)
+                } else {
+                    VStack(spacing: 12) {
+                        ForEach(visible, id: \.self) { id in
+                            agentSection(id, visible: visible)
+                        }
+                    }
+                    .coordinateSpace(name: Self.dragSpace)
+                    .onPreferenceChange(CardFramesKey.self) { cardFrames = $0 }
+                }
             }
         }
     }

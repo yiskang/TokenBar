@@ -76,6 +76,10 @@ public enum ClientRegistry {
 
     public static let tabOrderKey = "tokenbar.tabs.order"
     public static let tabHiddenKey = "tokenbar.tabs.hidden"
+    /// Independent from `tabHiddenKey`: hides a client's Agent-limits quota
+    /// card only, leaving its top tab (and cost/token/model data) visible.
+    /// Added for accounts whose plan has no OAuth quota (e.g. Claude Console).
+    public static let limitsHiddenKey = "tokenbar.limits.hidden"
 
     /// Returns the set of client ids that the user has hidden from the top tabs (and now also from Agent limits cards).
     public static func hiddenClients() -> Set<String> {
@@ -84,32 +88,38 @@ public enum ClientRegistry {
         return Set(raw.isEmpty ? [] : raw.split(separator: ",").map(String.init))
     }
 
+    /// Returns the set of client ids whose Agent-limits card the user has
+    /// hidden, independent of top-tab visibility.
+    public static func hiddenLimitsClients() -> Set<String> {
+        let defaults = UserDefaults.standard
+        let raw = defaults.string(forKey: limitsHiddenKey) ?? ""
+        return Set(raw.isEmpty ? [] : raw.split(separator: ",").map(String.init))
+    }
+
+    /// Sorts `ids` by the user's saved tab order (`tabOrderKey`), appending
+    /// ids not yet in the saved order at the end in their incoming order.
+    public static func orderedClients(_ ids: [String]) -> [String] {
+        let orderRaw = UserDefaults.standard.string(forKey: tabOrderKey) ?? ""
+        let order = orderRaw.isEmpty ? [] : orderRaw.split(separator: ",").map(String.init)
+        guard !order.isEmpty else { return ids }
+        return ids.sorted { a, b in
+            let ia = order.firstIndex(of: a) ?? Int.max
+            let ib = order.firstIndex(of: b) ?? Int.max
+            if ia == ib {
+                // Preserve relative order among items with no explicit position.
+                return ids.firstIndex(of: a)! < ids.firstIndex(of: b)!
+            }
+            return ia < ib
+        }
+    }
+
     /// Returns the subset of `present` clients to show in the top tab bar,
     /// filtered by hidden list and sorted according to the user's saved order.
     /// Clients not yet in the saved order are appended at the end (so newly
     /// discovered agents become visible without breaking existing custom order).
     public static func displayClients(present: [String]) -> [String] {
-        let orderRaw = UserDefaults.standard.string(forKey: tabOrderKey) ?? ""
         let hidden = hiddenClients()
-
-        let order = orderRaw.isEmpty ? [] : orderRaw.split(separator: ",").map(String.init)
-
-        let visible = present.filter { !hidden.contains($0) }
-
-        guard !order.isEmpty else {
-            // No custom order yet — preserve incoming order (historically alpha).
-            return visible
-        }
-
-        return visible.sorted { a, b in
-            let ia = order.firstIndex(of: a) ?? Int.max
-            let ib = order.firstIndex(of: b) ?? Int.max
-            if ia == ib {
-                // Preserve relative order among items with no explicit position.
-                return visible.firstIndex(of: a)! < visible.firstIndex(of: b)!
-            }
-            return ia < ib
-        }
+        return orderedClients(present.filter { !hidden.contains($0) })
     }
 
     /// Direction-aware reorder helper (drag down inserts after, up before).
