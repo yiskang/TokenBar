@@ -81,26 +81,61 @@ public enum ClientRegistry {
     /// Added for accounts whose plan has no OAuth quota (e.g. Claude Console).
     public static let limitsHiddenKey = "tokenbar.limits.hidden"
 
+    /// Parses the comma-separated id form persisted by the tab order/hidden
+    /// defaults into a set, tolerating an empty string. Single source of the
+    /// CSV split so callers (and the reactive views, which pass their observed
+    /// @AppStorage string) all agree on the shape.
+    public static func parseIdSet(_ raw: String) -> Set<String> {
+        Set(raw.isEmpty ? [] : raw.split(separator: ",").map(String.init))
+    }
+
+    /// Ordered variant of `parseIdSet` — keeps the saved sequence for callers
+    /// that need positions (reorder/order sorting), not just membership.
+    public static func parseIdList(_ raw: String) -> [String] {
+        raw.isEmpty ? [] : raw.split(separator: ",").map(String.init)
+    }
+
     /// Returns the set of client ids that the user has hidden from the top tabs (and now also from Agent limits cards).
     public static func hiddenClients() -> Set<String> {
-        let defaults = UserDefaults.standard
-        let raw = defaults.string(forKey: tabHiddenKey) ?? ""
-        return Set(raw.isEmpty ? [] : raw.split(separator: ",").map(String.init))
+        parseIdSet(UserDefaults.standard.string(forKey: tabHiddenKey) ?? "")
     }
 
     /// Returns the set of client ids whose Agent-limits card the user has
     /// hidden, independent of top-tab visibility.
     public static func hiddenLimitsClients() -> Set<String> {
-        let defaults = UserDefaults.standard
-        let raw = defaults.string(forKey: limitsHiddenKey) ?? ""
-        return Set(raw.isEmpty ? [] : raw.split(separator: ",").map(String.init))
+        parseIdSet(UserDefaults.standard.string(forKey: limitsHiddenKey) ?? "")
+    }
+
+    /// The superset of client ids that can show a row in the multi-agent
+    /// Agent-limits card: `present` clients that carry a known limit
+    /// (a placeholder row or a live quota snapshot), unioned with every client
+    /// that has a quota snapshot right now. Some agents (e.g. Antigravity)
+    /// report OAuth quota with no local session logs, so they are absent from
+    /// `present` yet must still be offered a management row. `quotaIds` is the
+    /// ordered list of snapshot client ids; `placeholders` the ids rendered
+    /// with a placeholder row even without a snapshot. Pure — the View layer
+    /// passes plain arrays/sets so TokenBarCore imports no UI types.
+    public static func knownLimitsClients(
+        present: [String], quotaIds: [String], placeholders: Set<String>
+    ) -> [String] {
+        let quotaSet = Set(quotaIds)
+        func known(_ id: String) -> Bool { placeholders.contains(id) || quotaSet.contains(id) }
+        var seen = Set<String>()
+        return (present.filter(known) + quotaIds).filter { seen.insert($0).inserted }
     }
 
     /// Sorts `ids` by the user's saved tab order (`tabOrderKey`), appending
     /// ids not yet in the saved order at the end in their incoming order.
     public static func orderedClients(_ ids: [String]) -> [String] {
-        let orderRaw = UserDefaults.standard.string(forKey: tabOrderKey) ?? ""
-        let order = orderRaw.isEmpty ? [] : orderRaw.split(separator: ",").map(String.init)
+        orderedClients(ids, orderRaw: UserDefaults.standard.string(forKey: tabOrderKey) ?? "")
+    }
+
+    /// Reactive overload: sorts against an explicitly-passed saved order string
+    /// so a SwiftUI view that observes the @AppStorage raw re-renders when the
+    /// order changes (the zero-arg variant reads UserDefaults for non-view
+    /// callers and never invalidates a body on its own).
+    public static func orderedClients(_ ids: [String], orderRaw: String) -> [String] {
+        let order = parseIdList(orderRaw)
         guard !order.isEmpty else { return ids }
         return ids.sorted { a, b in
             let ia = order.firstIndex(of: a) ?? Int.max
@@ -122,6 +157,17 @@ public enum ClientRegistry {
         return orderedClients(present.filter { !hidden.contains($0) })
     }
 
+    /// Reactive overload of `displayClients`: takes the observed hidden/order
+    /// raw strings so a SwiftUI view (e.g. the settings live preview) re-renders
+    /// the instant the user toggles a tab or reorders, instead of waiting for
+    /// the next poller tick to re-read UserDefaults.
+    public static func displayClients(
+        present: [String], hiddenRaw: String, orderRaw: String
+    ) -> [String] {
+        let hidden = parseIdSet(hiddenRaw)
+        return orderedClients(present.filter { !hidden.contains($0) }, orderRaw: orderRaw)
+    }
+
     /// Direction-aware reorder helper (drag down inserts after, up before).
     /// Mirrors the logic used in AgentLimitsCard.
     public static func reorder(_ list: [String], from: String, to: String) -> [String] {
@@ -133,6 +179,41 @@ public enum ClientRegistry {
         var out = list.filter { $0 != from }
         let anchor = out.firstIndex(of: to)!
         out.insert(from, at: fromI < toI ? anchor + 1 : anchor)
+        return out
+    }
+
+    /// Reorder a `visible` subset while preserving the positions of every id in
+    /// `full` that isn't part of that subset. The drag operates on `visible`
+    /// (e.g. the quota cards actually on screen — a subset that excludes hidden
+    /// and non-quota clients), yet the saved order key drives the whole tab
+    /// universe: writing only the reordered visible sequence would silently
+    /// drop every off-screen id from the shared order. This recomputes the
+    /// visible sequence, then rebuilds the full order by refilling the visible
+    /// slots in their new order and leaving non-visible ids exactly where they
+    /// were. Visible ids absent from `full` are appended at the end (the
+    /// existing "newly discovered agent" semantics).
+    public static func mergeReorder(
+        full: [String], visible: [String], from: String, to: String
+    ) -> [String] {
+        let newVisible = reorder(visible, from: from, to: to)
+        let visibleSet = Set(visible)
+        var queue = newVisible[...]
+        var out: [String] = []
+        for id in full {
+            if visibleSet.contains(id) {
+                // Refill this visible slot with the next id from the reordered
+                // sequence. `queue` starts as a permutation of `visible`, so it
+                // has at least as many ids as there are visible slots in `full`.
+                if let next = queue.first {
+                    queue = queue.dropFirst()
+                    out.append(next)
+                }
+            } else {
+                out.append(id)
+            }
+        }
+        // Visible ids that weren't already positioned in `full` land at the end.
+        out.append(contentsOf: queue)
         return out
     }
 

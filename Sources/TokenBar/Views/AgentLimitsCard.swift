@@ -26,10 +26,6 @@ struct AgentLimitsCard: View {
     /// order persists to UserDefaults. Only the multi-agent overview opts in.
     var reorderable = false
 
-    /// Master switch: off hides the card everywhere it's rendered (Overview
-    /// summary, single-client tabs, Settings live-preview) regardless of
-    /// per-client visibility.
-    @AppStorage("tokenbar.limits.enabled") private var limitsEnabled = true
     /// Bar fills by used (true) or remaining (false).
     @AppStorage("tokenbar.limits.asUsed") private var asUsed = false
     @AppStorage("tokenbar.limits.paceMode") private var paceModeRaw = PaceMode.historical.rawValue
@@ -64,17 +60,14 @@ struct AgentLimitsCard: View {
     ]
 
     /// Every client id that can show a row in the multi-agent Agent-limits
-    /// card: `present` clients (local session data) plus anything with a
-    /// placeholder row or a live quota snapshot. Some agents (e.g.
-    /// Antigravity) report OAuth quota with no local session logs, so they
-    /// wouldn't otherwise appear in `present` — Settings needs this superset
-    /// to offer a hide toggle for them too.
+    /// card. Thin wrapper over `ClientRegistry.knownLimitsClients` (the one
+    /// implementation) that supplies this card's placeholder-row keys, so the
+    /// registry-level lists and the card agree on the universe.
     static func knownClientIds(agentUsage: AgentUsagePayload?, present: [String]) -> [String] {
-        let snapshotIds = Set((agentUsage?.agents ?? []).map(\.clientId))
-        func known(_ id: String) -> Bool { placeholderRows[id] != nil || snapshotIds.contains(id) }
-        var seen = Set<String>()
-        return (present.filter(known) + (agentUsage?.agents.map(\.clientId) ?? []))
-            .filter { seen.insert($0).inserted }
+        ClientRegistry.knownLimitsClients(
+            present: present,
+            quotaIds: (agentUsage?.agents ?? []).map(\.clientId),
+            placeholders: Set(placeholderRows.keys))
     }
 
     private var snapshots: [String: AgentUsageSnapshot] {
@@ -124,8 +117,7 @@ struct AgentLimitsCard: View {
         // per-client Agent-limits toggle: either one keeps a client out of
         // the multi-agent limits card.
         if reorderable {
-            let limitsHidden = Set(
-                limitsHiddenRaw.isEmpty ? [] : limitsHiddenRaw.split(separator: ",").map(String.init))
+            let limitsHidden = ClientRegistry.parseIdSet(limitsHiddenRaw)
             let hidden = ClientRegistry.hiddenClients().union(limitsHidden)
             base = base.filter { !hidden.contains($0) }
         }
@@ -133,46 +125,41 @@ struct AgentLimitsCard: View {
     }
 
     /// Saved drag order applied; ids without a saved position keep their
-    /// natural order at the end. Disabled in non-reorderable views.
+    /// natural order at the end. Disabled in non-reorderable views. Reads the
+    /// observed `orderRaw` so a drag re-sorts the cards reactively.
     private var visibleClients: [String] {
-        let base = baseClients
-        let order = orderRaw.isEmpty ? [] : orderRaw.split(separator: ",").map(String.init)
-        guard reorderable, !order.isEmpty else { return base }
-        return base.sorted { a, b in
-            let ia = order.firstIndex(of: a) ?? Int.max
-            let ib = order.firstIndex(of: b) ?? Int.max
-            return ia == ib ? base.firstIndex(of: a)! < base.firstIndex(of: b)! : ia < ib
-        }
+        reorderable ? ClientRegistry.orderedClients(baseClients, orderRaw: orderRaw) : baseClients
     }
 
+    // The master `tokenbar.limits.enabled` gate lives at every call site
+    // (OverviewView, SettingsWindowView) rather than inside `body`, so an
+    // "off" card leaves no structural gap in its parent VStack.
     var body: some View {
-        if limitsEnabled {
-            DashCard(title, trailing: { noteLabel }) {
-                if opencodeView {
-                    integrationLine("↔ Routes through opencode")
-                } else if !restrict && !opencodeSubs.isEmpty {
-                    integrationLine("opencode also taps: \(opencodeSubs.joined(separator: " · "))")
-                }
-                let visible = visibleClients
-                if visible.isEmpty {
-                    Text(
-                        opencodeView && !opencodeSubs.isEmpty
-                            ? "Subscriptions: \(opencodeSubs.joined(separator: " · "))"
-                            : "No supported agents yet"
-                    )
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.vertical, 8)
-                } else {
-                    VStack(spacing: 12) {
-                        ForEach(visible, id: \.self) { id in
-                            agentSection(id, visible: visible)
-                        }
+        DashCard(title, trailing: { noteLabel }) {
+            if opencodeView {
+                integrationLine("↔ Routes through opencode")
+            } else if !restrict && !opencodeSubs.isEmpty {
+                integrationLine("opencode also taps: \(opencodeSubs.joined(separator: " · "))")
+            }
+            let visible = visibleClients
+            if visible.isEmpty {
+                Text(
+                    opencodeView && !opencodeSubs.isEmpty
+                        ? "Subscriptions: \(opencodeSubs.joined(separator: " · "))"
+                        : "No supported agents yet"
+                )
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+                .frame(maxWidth: .infinity, alignment: .center)
+                .padding(.vertical, 8)
+            } else {
+                VStack(spacing: 12) {
+                    ForEach(visible, id: \.self) { id in
+                        agentSection(id, visible: visible)
                     }
-                    .coordinateSpace(name: Self.dragSpace)
-                    .onPreferenceChange(CardFramesKey.self) { cardFrames = $0 }
                 }
+                .coordinateSpace(name: Self.dragSpace)
+                .onPreferenceChange(CardFramesKey.self) { cardFrames = $0 }
             }
         }
     }
@@ -200,17 +187,11 @@ struct AgentLimitsCard: View {
         }
     }
 
-    /// Move `from` to the `to` card's slot, direction-aware: dragging downward
-    /// drops it just after `to`, dragging upward just before it. (Plain
-    /// "insert before" makes single-step downward moves a no-op.)
+    /// Move `from` to the `to` card's slot, direction-aware. Delegates to the
+    /// single `ClientRegistry.reorder` implementation (SelfTest asserts against
+    /// this symbol; keeping the wrapper keeps those checks addressing the card).
     static func reorder(_ list: [String], from: String, to: String) -> [String] {
-        guard let fromI = list.firstIndex(of: from), let toI = list.firstIndex(of: to),
-              fromI != toI
-        else { return list }
-        var out = list.filter { $0 != from }
-        let anchor = out.firstIndex(of: to)!
-        out.insert(from, at: fromI < toI ? anchor + 1 : anchor)
-        return out
+        ClientRegistry.reorder(list, from: from, to: to)
     }
 
     /// Which edge of a card the drop line sits on, matching the
@@ -231,8 +212,14 @@ struct AgentLimitsCard: View {
             }
             .onEnded { _ in
                 if let over = overId, over != id {
-                    let next = Self.reorder(visible, from: id, to: over)
-                    orderRaw = next.joined(separator: ",")
+                    // `visible` is a subset of the shared tab order (it excludes
+                    // hidden and non-quota clients). Merge the reordered subset
+                    // back into the full saved order so off-screen ids keep
+                    // their slots instead of being dropped from the key.
+                    let full = ClientRegistry.parseIdList(orderRaw)
+                    let merged = ClientRegistry.mergeReorder(
+                        full: full, visible: visible, from: id, to: over)
+                    orderRaw = merged.joined(separator: ",")
                 }
                 dragId = nil
                 overId = nil

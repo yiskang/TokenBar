@@ -18,18 +18,20 @@ struct OverviewView: View {
     /// Dashboard year filter (nil = all time), forwarded to the chart card.
     var year: String?
 
+    /// Master switch: off hides the Agent-limits card everywhere.
+    @AppStorage("tokenbar.limits.enabled") private var limitsEnabled = true
     /// Per-client Agent-limits visibility, independent of tab visibility.
     @AppStorage(ClientRegistry.limitsHiddenKey) private var limitsHiddenRaw = ""
 
     private var hiddenLimits: Set<String> {
-        Set(limitsHiddenRaw.isEmpty ? [] : limitsHiddenRaw.split(separator: ",").map(String.init))
+        ClientRegistry.parseIdSet(limitsHiddenRaw)
     }
 
     var body: some View {
         VStack(spacing: 12) {
             if let singleClient {
                 let name = ClientRegistry.style(singleClient).displayName
-                if !hiddenLimits.contains(singleClient) {
+                if limitsEnabled && !hiddenLimits.contains(singleClient) {
                     AgentLimitsCard(
                         clients: [singleClient], trace: trace, agentUsage: agentUsage,
                         title: "\(name) limits", note: "Session / weekly / model limits",
@@ -41,9 +43,11 @@ struct OverviewView: View {
                     title: "\(name) models")
             } else {
                 chart
-                AgentLimitsCard(
-                    clients: clientIds, trace: trace, agentUsage: agentUsage,
-                    reorderable: true)
+                if limitsEnabled {
+                    AgentLimitsCard(
+                        clients: clientIds, trace: trace, agentUsage: agentUsage,
+                        reorderable: true)
+                }
                 UsageTraceCard(buckets: trace, windowSecs: 600)
                 ModelBreakdownCard(
                     report: modelReport, clientIds: clientIds, colors: colors)
