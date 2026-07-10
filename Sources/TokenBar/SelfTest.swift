@@ -182,6 +182,48 @@ enum SelfTest {
         expect(AgentLimitsCard.reorder(order, from: "a", to: "a") == order, "reorder onto itself is a no-op")
         expect(AgentLimitsCard.reorder(order, from: "x", to: "b") == order, "reorder unknown id is a no-op")
 
+        // mergeReorder: dragging within a visible SUBSET must not drop the
+        // off-screen ids from the shared tab-order key. Non-visible ids keep
+        // their exact slots; the visible slots refill in the new order.
+        expect(
+            ClientRegistry.mergeReorder(
+                full: ["g", "a", "c", "x"], visible: ["c", "x"], from: "x", to: "c")
+                == ["g", "a", "x", "c"],
+            "mergeReorder keeps non-visible ids in place")
+        // A visible id not yet in the saved order appends at the end.
+        expect(
+            ClientRegistry.mergeReorder(
+                full: ["a"], visible: ["a", "z"], from: "a", to: "a")
+                == ["a", "z"],
+            "mergeReorder appends visible ids absent from full")
+        // A no-op drag leaves the full order untouched.
+        expect(
+            ClientRegistry.mergeReorder(
+                full: ["a", "b", "c"], visible: ["a", "b", "c"], from: "a", to: "a")
+                == ["a", "b", "c"],
+            "mergeReorder no-op leaves full order unchanged")
+        // Empty saved order → just the reordered visible sequence.
+        expect(
+            ClientRegistry.mergeReorder(
+                full: [], visible: ["a", "b"], from: "a", to: "b")
+                == ["b", "a"],
+            "mergeReorder with empty full writes the visible sequence")
+
+        // knownLimitsClients (the hoisted universe): present clients with a
+        // known limit, unioned with quota-snapshot holders (dedup, ordered).
+        expect(
+            ClientRegistry.knownLimitsClients(
+                present: ["cursor", "claude"], quotaIds: ["antigravity"],
+                placeholders: ["codex", "claude", "gemini"])
+                == ["claude", "antigravity"],
+            "knownLimitsClients drops no-limit present ids, keeps quota-only ids")
+
+        // CSV id-set parse helper: empty string → empty set; commas split.
+        expect(ClientRegistry.parseIdSet("").isEmpty, "parseIdSet empty string is empty")
+        expect(
+            ClientRegistry.parseIdSet("a,b,a") == Set(["a", "b"]),
+            "parseIdSet splits and dedups")
+
         // FFI envelope/error contract (hermetic; no FFI allocation or live data).
         for (label, passed) in TBCore.envelopeContractChecks() {
             expect(passed, "envelope: \(label)")

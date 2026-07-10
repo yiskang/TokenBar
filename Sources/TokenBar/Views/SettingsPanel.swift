@@ -52,6 +52,14 @@ struct SettingsPanel: View {
 
     static let refreshIntervalOptions = [1, 5, 15, 30, 60]
 
+    /// First-wins dedup of two id lists, preserving order (a's entries first,
+    /// then b's not already seen). Used to build the client-tabs universe from
+    /// present clients ∪ quota-card clients.
+    private static func orderedUnion(_ a: [String], _ b: [String]) -> [String] {
+        var seen = Set<String>()
+        return (a + b).filter { seen.insert($0).inserted }
+    }
+
     // MARK: - Client tabs drag reorder helpers (adapted from AgentLimitsCard)
 
     private func dropEdge(for id: String, in orderList: [String]) -> VerticalEdge? {
@@ -82,7 +90,22 @@ struct SettingsPanel: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        // Computed once and shared by the two sections below (Agent limits +
+        // Client tabs), instead of re-deriving `knownClientIds` per section.
+        // `orderRaw:` overloads keep both lists reactive to a drag/reorder.
+        let knownIds = AgentLimitsCard.knownClientIds(
+            agentUsage: agentUsage, present: presentClients)
+        // Agent-limits management universe: only clients that can actually
+        // render a quota card (placeholder rows or a live snapshot).
+        let limitOrdered = ClientRegistry.orderedClients(knownIds, orderRaw: tabsOrderRaw)
+        // Client-tabs universe: every client that can be a top tab (present)
+        // OR a quota card (knownIds — e.g. quota-only Antigravity), so both
+        // orderings are managed from one list. Mirrors displayClients' source.
+        let presentSet = Set(presentClients)
+        let tabsUniverse = ClientRegistry.orderedClients(
+            Self.orderedUnion(presentClients, knownIds), orderRaw: tabsOrderRaw)
+
+        return VStack(alignment: .leading, spacing: 14) {
             section("Menubar title") {
                 radioGroup(
                     selection: $trayModeRaw,
@@ -142,18 +165,15 @@ struct SettingsPanel: View {
                         hint("The deficit/reserve marker. Historical learns your weekly usage curve and shows run-out risk, falling back to linear until enough weeks accrue; Linear paces evenly by the clock; Off hides the marker.")
                     }
 
-                    let knownClients = ClientRegistry.orderedClients(
-                        AgentLimitsCard.knownClientIds(agentUsage: agentUsage, present: presentClients))
-                    if !knownClients.isEmpty {
-                        let limitsHiddenSet = Set(
-                            limitsHiddenRaw.isEmpty ? [] : limitsHiddenRaw.split(separator: ",").map(String.init))
+                    if !limitOrdered.isEmpty {
+                        let limitsHiddenSet = ClientRegistry.parseIdSet(limitsHiddenRaw)
                         // A tab hidden below always hides its quota card too — the
                         // toggle here reflects that (off + disabled) rather than
                         // offering a state the card can never actually reach.
-                        let tabHiddenSet = Set(tabsHiddenRaw.isEmpty ? [] : tabsHiddenRaw.split(separator: ",").map(String.init))
+                        let tabHiddenSet = ClientRegistry.parseIdSet(tabsHiddenRaw)
                         Divider()
                         VStack(spacing: 1) {
-                            ForEach(knownClients, id: \.self) { id in
+                            ForEach(limitOrdered, id: \.self) { id in
                                 let tabHidden = tabHiddenSet.contains(id)
                                 HStack {
                                     HStack(spacing: 6) {
@@ -191,62 +211,70 @@ struct SettingsPanel: View {
             }
 
             section("Client tabs (top bar)") {
-                let hiddenSet = Set(tabsHiddenRaw.isEmpty ? [] : tabsHiddenRaw.split(separator: ",").map(String.init))
+                let hiddenSet = ClientRegistry.parseIdSet(tabsHiddenRaw)
 
-                // Master order: every client that can appear in the top bar
-                // OR the Agent-limits card (checked or unchecked, present or
-                // quota-only like Antigravity), sorted by saved order.
-                let fullOrdered = ClientRegistry.orderedClients(
-                    AgentLimitsCard.knownClientIds(agentUsage: agentUsage, present: presentClients))
-
-                if fullOrdered.isEmpty {
+                if tabsUniverse.isEmpty {
                     Text("No clients with usage data yet.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 } else {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("Drag to reorder. Check = show in top tabs, uncheck = hide from top tabs (but stays here).")
+                        Text("Drag to set the order used by both the top tabs and the quota cards. The switch shows/hides a client's top tab (hiding also drops its quota card).")
                             .font(.caption2)
                             .foregroundStyle(.secondary)
 
                         VStack(spacing: 1) {
-                            ForEach(fullOrdered, id: \.self) { id in
+                            ForEach(tabsUniverse, id: \.self) { id in
                                 let isVisible = !hiddenSet.contains(id)
+                                // Only present clients can be top tabs, so only
+                                // they get the show/hide switch. Quota-only ids
+                                // (e.g. Antigravity — OAuth quota, no local
+                                // sessions) appear solely to order their quota
+                                // card, so they show a caption instead.
+                                let canTab = presentSet.contains(id)
                                 HStack(spacing: 8) {
                                     // Drag handle - always shown for every provider
                                     Text("⠿")
                                         .font(.caption)
                                         .foregroundStyle(tabsDragId == id ? .primary : .tertiary)
                                         .help("Drag to reorder")
-                                        .gesture(dragGestureForTab(id: id, orderList: fullOrdered))
+                                        .gesture(dragGestureForTab(id: id, orderList: tabsUniverse))
 
                                     AgentIconView(clientId: id, size: 14)
                                     Text(ClientRegistry.shortName(id))
                                         .font(.caption)
 
+                                    if !canTab {
+                                        Text("(quota card only)")
+                                            .font(.caption2)
+                                            .foregroundStyle(.tertiary)
+                                    }
+
                                     Spacer()
 
-                                    Toggle("", isOn: Binding(
-                                        get: { isVisible },
-                                        set: { show in
-                                            var hidden = hiddenSet
-                                            if show {
-                                                hidden.remove(id)
-                                            } else {
-                                                hidden.insert(id)
+                                    if canTab {
+                                        Toggle("", isOn: Binding(
+                                            get: { isVisible },
+                                            set: { show in
+                                                var hidden = hiddenSet
+                                                if show {
+                                                    hidden.remove(id)
+                                                } else {
+                                                    hidden.insert(id)
+                                                }
+                                                tabsHiddenRaw = hidden.sorted().joined(separator: ",")
                                             }
-                                            tabsHiddenRaw = hidden.sorted().joined(separator: ",")
-                                        }
-                                    ))
-                                    .toggleStyle(.switch)
-                                    .controlSize(.mini)
-                                    .labelsHidden()
+                                        ))
+                                        .toggleStyle(.switch)
+                                        .controlSize(.mini)
+                                        .labelsHidden()
+                                    }
                                 }
                                 .padding(.horizontal, 10)
                                 .padding(.vertical, 7)
                                 .opacity(tabsDragId == id ? 0.5 : 1)
-                                .overlay(alignment: dropEdge(for: id, in: fullOrdered) == .top ? .top : .bottom) {
-                                    if let edge = dropEdge(for: id, in: fullOrdered) {
+                                .overlay(alignment: dropEdge(for: id, in: tabsUniverse) == .top ? .top : .bottom) {
+                                    if let edge = dropEdge(for: id, in: tabsUniverse) {
                                         Rectangle()
                                             .fill(Color.accentColor)
                                             .frame(height: 2)
@@ -267,7 +295,7 @@ struct SettingsPanel: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                hint("All providers always appear here so you can arrange order + visibility. Unchecked = hidden from top tabs AND from Agent limits cards (and overview charts). Order applies to top tabs and quota cards.")
+                hint("Present clients have a switch to show/hide their top tab — hiding also removes that client's quota card. Quota-only clients (OAuth quota, no local sessions, e.g. Antigravity) have no tab, so they appear here only to order their quota card. Drag order applies to both top tabs and quota cards.")
             }
 
             section("Live trace") {

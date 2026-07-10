@@ -14,6 +14,14 @@ struct SettingsWindowView: View {
     @State private var model = DashboardModel()
     @State private var tokensPerMin: Double?
 
+    /// Master switch: off hides the preview's Agent-limits card too.
+    @AppStorage("tokenbar.limits.enabled") private var limitsEnabled = true
+    /// Observed so the preview's tab list re-derives the instant the user
+    /// toggles visibility or reorders in the left panel, instead of lagging a
+    /// poller tick behind.
+    @AppStorage(ClientRegistry.tabHiddenKey) private var tabsHiddenRaw = ""
+    @AppStorage(ClientRegistry.tabOrderKey) private var tabsOrderRaw = ""
+
     var body: some View {
         HStack(spacing: 0) {
             ScrollView {
@@ -62,12 +70,16 @@ struct SettingsWindowView: View {
                 }
             }
 
-            section("Agent limits card") {
-                let displayClients = ClientRegistry.displayClients(present: model.stats?.presentClients ?? [])
-                AgentLimitsCard(
-                    clients: displayClients,
-                    trace: model.trace, agentUsage: model.agentUsage,
-                    reorderable: true)
+            if limitsEnabled {
+                section("Agent limits card") {
+                    let displayClients = ClientRegistry.displayClients(
+                        present: model.stats?.presentClients ?? [],
+                        hiddenRaw: tabsHiddenRaw, orderRaw: tabsOrderRaw)
+                    AgentLimitsCard(
+                        clients: displayClients,
+                        trace: model.trace, agentUsage: model.agentUsage,
+                        reorderable: true)
+                }
             }
 
             section("Live session card") {
