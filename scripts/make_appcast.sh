@@ -43,7 +43,7 @@ cp "$ARCHIVE" "$WORK/$ARCHIVE_BASENAME"
 # same-base-name HTML sidecar as this item's <description>.
 if [[ -n "$NOTES_FILE" && -s "$NOTES_FILE" ]]; then
   awk '
-    function esc(t) { gsub(/&/, "\&amp;", t); gsub(/</, "\&lt;", t); return t }
+    function esc(t) { gsub(/&/, "\\&amp;", t); gsub(/</, "\\&lt;", t); return t }
     /^- / {
       if (!inlist) { print "<ul>"; inlist = 1 }
       print "<li>" esc(substr($0, 3)) "</li>"

@@ -17,7 +17,7 @@
 </ul>
 <b>Fixes:</b>
 <ul>
-<li>Dropped the phantom "<lt;synthetic>" row from the Claude model breakdown — locally-fabricated zero-token turns; your totals are unchanged. Thanks @starburst3190 (#30).</li>
+<li>Dropped the phantom "&lt;synthetic&gt;" row from the Claude model breakdown — locally-fabricated zero-token turns; your totals are unchanged. Thanks @starburst3190 (#30).</li>
 <li>Hourly and Agents now filter per client in the core engine, so a single client's tab no longer shows whole-bucket totals for hours or agents it shares with other clients.</li>
 <li>Token sums saturate instead of overflowing on corrupt data.</li>
 </ul>
