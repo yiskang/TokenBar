@@ -18,7 +18,7 @@ struct AgentIconView: View {
         "codex", "droid", "kilocode", "synthetic", "codebuff",
         "antigravity", "kiro", "cursor", "warp", "amp", "pi", "kimi",
         // Official brand icons for the newer local clients (png/svg).
-        "cline", "jcode", "micode", "gjc",
+        "cline", "jcode", "micode", "gjc", "grok",
         // Newly onboarded brand icons (png/svg).
         "hermes", "roocode", "mux", "crush", "goose", "zed", "trae", "openclaw",
     ]

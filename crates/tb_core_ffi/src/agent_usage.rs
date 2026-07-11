@@ -1,5 +1,6 @@
 use crate::agent_antigravity;
 use crate::agent_copilot;
+use crate::agent_grok;
 use crate::agent_history;
 use chrono::{DateTime, SecondsFormat, TimeZone, Utc};
 use serde::{Deserialize, Serialize};
@@ -98,14 +99,33 @@ impl UsageWindow {
         resets_at: Option<DateTime<Utc>>,
         now: DateTime<Utc>,
     ) -> Self {
-        let remaining = (remaining_fraction * 100.0).clamp(0.0, 100.0);
+        Self::from_used_percent(
+            label,
+            (1.0 - remaining_fraction) * 100.0,
+            resets_at,
+            now,
+            None,
+        )
+    }
+
+    /// Build a window from an absolute used-percent (0..100), with optional
+    /// window length for pace. Clamps used into range and derives remaining.
+    pub(crate) fn from_used_percent(
+        label: String,
+        used_percent: f64,
+        resets_at: Option<DateTime<Utc>>,
+        now: DateTime<Utc>,
+        window_minutes: Option<i64>,
+    ) -> Self {
+        let used = used_percent.clamp(0.0, 100.0);
+        let remaining = (100.0 - used).clamp(0.0, 100.0);
         UsageWindow {
             label,
-            used_percent: (100.0 - remaining).max(0.0),
+            used_percent: used,
             remaining_percent: remaining,
             resets_at: resets_at.map(|d| d.to_rfc3339_opts(SecondsFormat::Millis, true)),
             reset_text: resets_at.map(|d| reset_text(d, now)),
-            window_minutes: None,
+            window_minutes,
             historical_expected_percent: None,
             run_out_probability: None,
         }
@@ -295,21 +315,50 @@ struct ClaudeRefreshResponse {
 
 pub async fn run() -> AgentUsagePayload {
     let generated_at = Utc::now().to_rfc3339_opts(SecondsFormat::Millis, true);
-    let (codex, claude, antigravity, copilot) = tokio::join!(
+    let (codex, claude, antigravity, copilot, grok) = tokio::join!(
         fetch_codex(),
         fetch_claude(),
         fetch_antigravity(),
-        fetch_copilot()
+        fetch_copilot(),
+        fetch_grok()
     );
     let mut agents = vec![codex, claude, antigravity];
     // Copilot only appears when signed in (via opencode); skip a bare not-signed-in error card.
     if let Some(copilot) = copilot {
         agents.push(copilot);
     }
+    // Grok only appears when ~/.grok/auth.json has credentials.
+    if let Some(grok) = grok {
+        agents.push(grok);
+    }
     AgentUsagePayload {
         generated_at,
         agents,
         opencode_subscriptions: crate::opencode_integrations::detect_subscriptions(),
+    }
+}
+
+async fn fetch_grok() -> Option<AgentUsageSnapshot> {
+    let now = Utc::now();
+    match agent_grok::fetch(now).await? {
+        Ok(data) => Some(AgentUsageSnapshot {
+            client_id: "grok".to_string(),
+            source: "oauth".to_string(),
+            updated_at: now.to_rfc3339_opts(SecondsFormat::Millis, true),
+            identity: data.identity,
+            windows: data.windows,
+            credits: None,
+            error: None,
+        }),
+        Err(error) => Some(AgentUsageSnapshot {
+            client_id: "grok".to_string(),
+            source: "oauth".to_string(),
+            updated_at: now.to_rfc3339_opts(SecondsFormat::Millis, true),
+            identity: None,
+            windows: Vec::new(),
+            credits: None,
+            error: Some(error),
+        }),
     }
 }
 

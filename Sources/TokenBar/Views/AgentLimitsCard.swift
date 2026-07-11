@@ -50,6 +50,7 @@ struct AgentLimitsCard: View {
         "codex": ["Session", "Weekly"],
         "claude": ["Session", "Weekly"],
         "gemini": ["Pro", "Flash"],
+        "grok": ["Weekly"],
     ]
 
     /// Maps opencode subscription labels (from the backend) to the agent

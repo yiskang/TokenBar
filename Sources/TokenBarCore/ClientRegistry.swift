@@ -44,6 +44,7 @@ public enum ClientRegistry {
         "jcode": ("Jcode", "#84cc16"),
         "micode": ("MiMo Code", "#fb923c"),
         "gjc": ("gjc", "#e11d48"),
+        "grok": ("Grok Build", "#1f2937"),
     ]
 
     public static func style(_ id: String) -> ClientStyle {

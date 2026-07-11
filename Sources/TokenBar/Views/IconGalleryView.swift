@@ -12,7 +12,7 @@ struct IconGalleryView: View {
         "claude", "gemini", "opencode", "copilot", "qwen",
         "codex", "droid", "kilocode", "kilo", "synthetic", "kiro", "codebuff",
         "cursor", "warp", "amp", "pi", "kimi",
-        "cline", "jcode", "micode", "gjc",
+        "cline", "jcode", "micode", "gjc", "grok",
         "antigravity", "antigravity-cli",
         "hermes", "roocode", "mux", "crush", "goose", "zed", "trae", "openclaw",
     ]

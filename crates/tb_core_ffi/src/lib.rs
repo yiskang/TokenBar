@@ -16,6 +16,7 @@
 
 mod agent_antigravity;
 mod agent_copilot;
+mod agent_grok;
 mod agent_history;
 mod agent_usage;
 mod agents_report;
@@ -381,7 +382,7 @@ pub extern "C" fn tb_tokens_per_min() -> *mut c_char {
 }
 
 /// OAuth quota cards (`AgentUsagePayload` in agentUsage.ts) for
-/// codex/claude/antigravity/copilot, fetched concurrently. Network-bound —
+/// codex/claude/antigravity/copilot/grok, fetched concurrently. Network-bound —
 /// call from a background thread. Per-provider failures land in each
 /// snapshot's `error` field; the call itself only fails on serialization.
 #[no_mangle]
