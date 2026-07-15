@@ -1,0 +1,13 @@
+New:
+- Added Grok Build as a first-class client, including local session usage throughout TokenBar and weekly quota when Grok OAuth credentials are available.
+- Added discovery for named Hermes profiles, including profile-only homes.
+- Added deep Claude workflow transcripts to local usage reports.
+
+Improved:
+- Preserved provider-reported costs from GJC and OpenCode instead of replacing them with estimates.
+- Made usage refreshes reliable when Roo Code, Kilo Code, Cline, Droid, Kimi, or Kiro change metadata stored outside the primary session file.
+
+Fixes:
+- Corrected Jcode turn counts, Pi session and subagent attribution, and nested Copilot agent attribution.
+- Prevented token totals from overflowing on corrupt or extreme input.
+- Corrected Codex model-performance timing so repeated snapshots no longer count overlapping durations.
