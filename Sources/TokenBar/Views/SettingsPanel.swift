@@ -211,7 +211,7 @@ struct SettingsPanel: View {
                 }
             }
 
-            section("Monthly") {
+            section("Monthly tab") {
                 toggleRow("Show Monthly tab", isOn: $monthlyEnabled)
                 hint("Off removes the Monthly tab from the popover's tab row. Cost/token data is unaffected.")
             }
