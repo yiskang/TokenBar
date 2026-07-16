@@ -30,7 +30,7 @@ const en = {
     copy: 'copy',
     copied: 'copied',
     github: 'View on GitHub',
-    statline: '25+ agents · 6 lenses · 160 fps 3D · 0 telemetry',
+    statline: '25+ agents · 7 lenses · 160 fps 3D · 0 telemetry',
     popAlt: 'The TokenBar popover: token usage dashboard with agent limits and live pace',
   },
   native: {
@@ -80,7 +80,7 @@ const en = {
     legendLow: '< 10% left',
   },
   views: {
-    eyebrow: 'One popover, six lenses',
+    eyebrow: 'One popover, seven lenses',
     h2: 'App tabs filter who. The view switch picks how.',
     intro:
       'Pick which agents you’re looking at, then choose how to break them down — a multi-view dashboard modeled on <a class="ilink" href="https://github.com/junhoyeo/tokscale">tokscale</a>’s TUI, lenses and columns and all.',
@@ -88,6 +88,7 @@ const en = {
     items: [
       { name: 'Overview', desc: 'The whole picture — contribution chart, agent limits with pace, live session, model breakdown, streaks.' },
       { name: 'Models', desc: 'Every model ranked by cost, with its share and a dim In · Out · CR · CW split.' },
+      { name: 'Monthly', desc: 'Active months newest-first — select one to drill into that month’s per-model spend.' },
       { name: 'Daily', desc: 'Active days newest-first — select one to drill into that day’s per-model spend.' },
       { name: 'Hourly', desc: 'A 24-hour-of-day rhythm: when in the day your tokens actually get spent.' },
       { name: 'Stats', desc: 'Headline summary — total spend, active days, streaks, favorite model, best day.' },
@@ -138,7 +139,7 @@ const en = {
     items: [
       {
         q: 'What exactly is TokenBar?',
-        a: 'A free, open-source native macOS menu-bar app that reads your local AI coding session logs and shows what you’re spending — across a contribution graph, per-model and per-agent breakdowns, daily and hourly views, and live throughput. No CLI to run, no account.',
+        a: 'A free, open-source native macOS menu-bar app that reads your local AI coding session logs and shows what you’re spending — across a contribution graph, per-model and per-agent breakdowns, monthly, daily, and hourly views, and live throughput. No CLI to run, no account.',
       },
       {
         q: 'Which AI coding tools does it track?',
@@ -180,7 +181,7 @@ const en = {
         name: 'tokscale',
         who: 'by Junho Yeo',
         href: 'https://github.com/junhoyeo/tokscale',
-        body: 'The foundation. Its vendored tokscale-core crate drives TokenBar’s session parsing, dedup, and pricing across 25+ agents — and its interactive TUI is the blueprint for the whole dashboard: the six lenses and their In · Out · CR · CW column breakdown.',
+        body: 'The foundation. Its vendored tokscale-core crate drives TokenBar’s session parsing, dedup, and pricing across 25+ agents — and its interactive TUI is the blueprint for the whole dashboard: the seven lenses and their In · Out · CR · CW column breakdown.',
         accent: '--p-deepseek',
       },
       {
@@ -239,7 +240,7 @@ const zhTw: typeof en = {
     copy: '複製',
     copied: '已複製',
     github: '在 GitHub 上看',
-    statline: '25+ agents · 6 種視圖 · 160 fps 3D · 0 遙測',
+    statline: '25+ agents · 7 種視圖 · 160 fps 3D · 0 遙測',
     popAlt: 'TokenBar popover：token 用量儀表板，含 agent 額度與即時進度',
   },
   native: {
@@ -289,7 +290,7 @@ const zhTw: typeof en = {
     legendLow: '剩不到 10%',
   },
   views: {
-    eyebrow: '一個 popover，六種透鏡',
+    eyebrow: '一個 popover，七種透鏡',
     h2: 'App 分頁選「看誰」，視圖切換選「怎麼看」。',
     intro:
       '先挑要看的 agent，再選拆解方式——多視圖儀表板的版面，連透鏡與欄位都照著 <a class="ilink" href="https://github.com/junhoyeo/tokscale">tokscale</a> 的 TUI 來設計。',
@@ -297,6 +298,7 @@ const zhTw: typeof en = {
     items: [
       { name: 'Overview', desc: '全貌——貢獻圖、agent 額度與進度、即時 session、模型佔比、連續紀錄。' },
       { name: 'Models', desc: '每個模型按花費排名，附佔比與 In · Out · CR · CW 細目。' },
+      { name: 'Monthly', desc: '活躍月份由新到舊排列——點選一個月即可下鑽該月各模型的花費。' },
       { name: 'Daily', desc: '活躍日由新到舊排列——點選一天即可下鑽當日各模型的花費。' },
       { name: 'Hourly', desc: '24 小時節奏圖：你的 token 實際都燒在一天的哪些時段。' },
       { name: 'Stats', desc: '重點摘要——總花費、活躍天數、連續紀錄、最愛模型、最高一日。' },
@@ -347,7 +349,7 @@ const zhTw: typeof en = {
     items: [
       {
         q: 'TokenBar 到底是什麼？',
-        a: '免費開源的原生 macOS 選單列 app，讀取本機的 AI 編碼 session 紀錄，把你的花費攤開來看——貢獻圖、各模型與各 agent 細目、每日與每時視圖、即時吞吐量。不用跑 CLI、免帳號。',
+        a: '免費開源的原生 macOS 選單列 app，讀取本機的 AI 編碼 session 紀錄，把你的花費攤開來看——貢獻圖、各模型與各 agent 細目、每月、每日與每時視圖、即時吞吐量。不用跑 CLI、免帳號。',
       },
       {
         q: '追蹤哪些 AI 編碼工具？',
@@ -389,7 +391,7 @@ const zhTw: typeof en = {
         name: 'tokscale',
         who: 'by Junho Yeo',
         href: 'https://github.com/junhoyeo/tokscale',
-        body: '整個專案的地基。vendored 的 tokscale-core crate 驅動 TokenBar 跨 25+ agent 的 session 解析、去重與計價——而它的互動式 TUI 更是整套儀表板的藍本：六種透鏡，連同 In · Out · CR · CW 的欄位拆解，都照著它來。',
+        body: '整個專案的地基。vendored 的 tokscale-core crate 驅動 TokenBar 跨 25+ agent 的 session 解析、去重與計價——而它的互動式 TUI 更是整套儀表板的藍本：七種透鏡，連同 In · Out · CR · CW 的欄位拆解，都照著它來。',
         accent: '--p-deepseek',
       },
       {
