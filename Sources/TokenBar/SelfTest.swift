@@ -511,6 +511,28 @@ enum SelfTest {
                 for: mRows[0], clientIds: ["a", "b"], colors: ModelColorMap(report: nil)).count == 2,
             "drill-down shows client b's model when b is selected")
 
+        // Message-only activity (PR #54 review r3595383789): a contribution
+        // with messages but zero tokens and zero cost must still surface —
+        // some parsers emit message-count-only rows. Prior guard was
+        // `tokens > 0 || cost > 0`, which dropped this month entirely.
+        let messageOnlyJSON = """
+        {"meta":{"generatedAt":"now","version":"1","dateRange":{"start":"2026-02-01","end":"2026-02-01"}},
+         "summary":{"totalTokens":0,"totalCost":0,"totalDays":1,"activeDays":1,"averagePerDay":0,
+                    "maxCostInSingleDay":0,"clients":["a"],"models":[]},
+         "years":[],
+         "contributions":[
+           {"date":"2026-02-01","totals":{"tokens":0,"cost":0,"messages":5},"intensity":0,
+            "tokenBreakdown":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"reasoning":0},
+            "clients":[
+              {"client":"a","modelId":"m1","providerId":"p","cost":0,"messages":5,
+               "tokens":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"reasoning":0}}]}
+         ]}
+        """
+        let messageOnlyPayload = try! JSONDecoder().decode(UsagePayload.self, from: Data(messageOnlyJSON.utf8))
+        let moRows = MonthlyView.monthRows(payload: messageOnlyPayload, clientIds: ["a"])
+        expect(moRows.count == 1 && moRows[0].messages == 5 && moRows[0].tokens == 0 && moRows[0].cost == 0,
+            "a message-only month (zero tokens, zero cost) still surfaces in the Monthly lens")
+
         // Tab order (plan 2026-07-16): Monthly leads Daily in the tab row.
         expect(AppView.allCases.map(\.rawValue) ==
             ["overview", "models", "monthly", "daily", "hourly", "stats", "agents"],

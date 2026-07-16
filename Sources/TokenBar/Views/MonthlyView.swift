@@ -49,7 +49,7 @@ struct MonthlyView: View {
                 cost += cc.cost
                 messages += cc.messages
             }
-            guard tokens > 0 || cost > 0 else { continue }
+            guard tokens > 0 || cost > 0 || messages > 0 else { continue }
             let month = String(c.date.prefix(7))
             var slot = grouped[month]
                 ?? MonthRow(month: month, tokens: 0, cost: 0, messages: 0, contributions: [])
