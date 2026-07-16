@@ -52,6 +52,11 @@ struct PopoverView: View {
         AppView.visible(monthlyEnabled: monthlyEnabled)
     }
 
+    /// This frame's actually-safe view — see `AppView.effective`.
+    private var effectiveView: AppView {
+        AppView.effective(activeView.wrappedValue, monthlyEnabled: monthlyEnabled)
+    }
+
     /// Client ids shown in the top tab bar: present clients minus the user's
     /// hidden set, in their saved order. Drives both the tab row and the
     /// fall-back-to-Overview guard (see `.onChange` below).
@@ -178,7 +183,7 @@ struct PopoverView: View {
         .onChange(of: displayClients) { _, _ in
             resetTabIfHidden()
         }
-        .onChange(of: monthlyEnabled) { _, _ in
+        .onChange(of: monthlyEnabled, initial: true) { _, _ in
             resetViewIfHidden()
         }
     }
@@ -386,7 +391,7 @@ struct PopoverView: View {
             // slice, so this hot path (re-evals every ~10s trace poll) doesn't
             // re-aggregate UsageStats on every body eval.
             let activeStats = model.stats(selecting: Set(clientIds)) ?? stats
-            switch activeView.wrappedValue {
+            switch effectiveView {
             case .overview:
                 OverviewView(
                     payload: payload, clientIds: clientIds, stats: activeStats,
@@ -416,7 +421,7 @@ struct PopoverView: View {
 
     private var footer: some View {
         HStack {
-            Text(activeView.wrappedValue.label)
+            Text(effectiveView.label)
                 .font(.caption)
                 .foregroundStyle(.tertiary)
             Spacer()

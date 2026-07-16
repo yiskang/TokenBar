@@ -602,6 +602,13 @@ enum SelfTest {
         expect(AppView.visible(monthlyEnabled: false) == AppView.allCases.filter { $0 != .monthly },
             "hiding monthly removes exactly the monthly tab, order otherwise unchanged")
 
+        expect(AppView.effective(.monthly, monthlyEnabled: true) == .monthly,
+            "monthly stays monthly while visible")
+        expect(AppView.effective(.monthly, monthlyEnabled: false) == .overview,
+            "monthly falls back to overview once hidden")
+        expect(AppView.effective(.daily, monthlyEnabled: false) == .daily,
+            "hiding monthly doesn't affect any other lens")
+
         // Filtered stats derive their range from the SELECTED clients (issue
         // #36 Fix, round 5): a hidden client active AFTER the visible client's
         // last day must not reset/shorten the visible streak. Fixture: "vis"

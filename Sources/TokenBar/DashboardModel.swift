@@ -16,6 +16,17 @@ enum AppView: String, CaseIterable {
     static func visible(monthlyEnabled: Bool) -> [AppView] {
         monthlyEnabled ? allCases : allCases.filter { $0 != .monthly }
     }
+
+    /// The view to actually render/label this frame. Monthly never survives
+    /// being hidden — not even for the one frame before `resetViewIfHidden()`
+    /// persists the correction — because a transient popover can reopen with
+    /// a brand-new view instance whose `onChange` has nothing to compare
+    /// against (see StatusItemController's `.transient` behavior). Same
+    /// defensive shape as `lensContent`'s inline `singleClient` check for a
+    /// just-hidden client tab.
+    static func effective(_ view: AppView, monthlyEnabled: Bool) -> AppView {
+        (!monthlyEnabled && view == .monthly) ? .overview : view
+    }
 }
 
 /// Snapshot of the model's essential state, captured on each successful
