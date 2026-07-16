@@ -21,7 +21,7 @@ more — read on-device from your local session logs. No Dock icon, no telemetry
 no account.
 
 <p align="center">
-  <img src="docs/screenshots/popover-dark.png" alt="TokenBar popover in Liquid Glass over the desktop wallpaper" width="400">
+  <img src="landing/public/og-card-v4.png" alt="TokenBar — know every AI token you burn from the macOS menu bar" width="800">
 </p>
 
 The menu-bar title shows today's tokens, cost, live tokens/min, or **how much
@@ -44,15 +44,18 @@ broken down — seven lenses, plus the same year of usage as an orbitable 3D gra
 <table>
   <tr>
     <td align="center" width="50%"><img src="docs/screenshots/models.png" alt="Models view" width="300"><br><sub><b>Models</b> — every model ranked by cost</sub></td>
+    <td align="center" width="50%"><img src="docs/screenshots/monthly.png" alt="Monthly view" width="300"><br><sub><b>Monthly</b> — active months, with month drill-down</sub></td>
+  </tr>
+  <tr>
     <td align="center" width="50%"><img src="docs/screenshots/daily.png" alt="Daily view" width="300"><br><sub><b>Daily</b> — active days, with day drill-down</sub></td>
-  </tr>
-  <tr>
     <td align="center" width="50%"><img src="docs/screenshots/hourly.png" alt="Hourly view" width="300"><br><sub><b>Hourly</b> — when in the day you burn tokens</sub></td>
-    <td align="center" width="50%"><img src="docs/screenshots/stats.png" alt="Stats view" width="300"><br><sub><b>Stats</b> — headline summary &amp; streaks</sub></td>
   </tr>
   <tr>
+    <td align="center" width="50%"><img src="docs/screenshots/stats.png" alt="Stats view" width="300"><br><sub><b>Stats</b> — headline summary &amp; streaks</sub></td>
     <td align="center" width="50%"><img src="docs/screenshots/agents.png" alt="Agents view" width="300"><br><sub><b>Agents</b> — sub-agents ranked by cost</sub></td>
-    <td align="center" width="50%"><img src="docs/screenshots/settings.png" alt="Settings" width="300"><br><sub><b>Settings</b> — menu-bar title, icon &amp; quota source</sub></td>
+  </tr>
+  <tr>
+    <td align="center" colspan="2"><img src="docs/screenshots/settings.png" alt="Settings" width="300"><br><sub><b>Settings</b> — menu-bar title, icon &amp; quota source</sub></td>
   </tr>
 </table>
 

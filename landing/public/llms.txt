@@ -14,6 +14,7 @@
 ## Dashboard views
 - Overview: contribution chart (2D stacked bars + interactive SceneKit 3D year graph), agent limits with pace, live session trace, model breakdown, streaks.
 - Models: every model ranked by cost with an In/Out/CacheRead/CacheWrite split.
+- Monthly: active months, selectable to drill into that month's per-model breakdown.
 - Daily: active days, selectable to drill into that day's per-model breakdown.
 - Hourly: a 24-hour-of-day rhythm of token spend.
 - Stats: total spend, active days, streaks, favorite model, best day.
