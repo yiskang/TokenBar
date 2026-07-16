@@ -380,6 +380,8 @@ struct PopoverView: View {
                     report: model.modelReport, clientIds: clientIds, colors: model.colors)
             case .daily:
                 DailyView(payload: payload, clientIds: clientIds, colors: model.colors)
+            case .monthly:
+                MonthlyView(payload: payload, clientIds: clientIds, colors: model.colors)
             case .hourly:
                 HourlyView(report: model.hourly, clientIds: clientIds)
             case .stats:

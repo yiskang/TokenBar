@@ -6,7 +6,7 @@ import TokenBarCore
 /// (Overview/Claude/Codex…, later phase) filters *which* data; this picks
 /// *how* it is broken down. The two compose.
 enum AppView: String, CaseIterable {
-    case overview, models, daily, hourly, stats, agents
+    case overview, models, daily, monthly, hourly, stats, agents
 
     var label: String { rawValue.prefix(1).uppercased() + rawValue.dropFirst() }
 }
