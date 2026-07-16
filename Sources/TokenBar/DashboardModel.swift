@@ -10,22 +10,29 @@ enum AppView: String, CaseIterable {
 
     var label: String { rawValue.prefix(1).uppercased() + rawValue.dropFirst() }
 
-    /// Lenses shown in the tab row. Monthly is the only user-hideable lens
-    /// today; hiding it removes the tab entirely rather than showing an
-    /// empty placeholder (unlike Agent limits, which stays a card in place).
-    static func visible(monthlyEnabled: Bool) -> [AppView] {
-        monthlyEnabled ? allCases : allCases.filter { $0 != .monthly }
+    /// Lenses the user can individually hide via Settings. Overview and
+    /// Models are fixed anchors — Overview is the fallback target for every
+    /// hidden lens (see `effective`), so it can never itself be hidden.
+    static let toggleable: [AppView] = allCases.filter { $0 != .overview && $0 != .models }
+
+    /// Lenses shown in the tab row, given the persisted hidden-set raw
+    /// string. Same comma-separated-ids shape `ClientRegistry` uses for
+    /// hidden client tabs — `ClientRegistry.parseIdSet` is reused verbatim,
+    /// it's a generic CSV-id parser, not client-specific in implementation.
+    static func visible(hiddenRaw: String) -> [AppView] {
+        let hidden = ClientRegistry.parseIdSet(hiddenRaw)
+        return allCases.filter { !hidden.contains($0.rawValue) }
     }
 
-    /// The view to actually render/label this frame. Monthly never survives
-    /// being hidden — not even for the one frame before `resetViewIfHidden()`
+    /// The view to actually render/label this frame. A hidden lens never
+    /// survives — not even for the one frame before `resetViewIfHidden()`
     /// persists the correction — because a transient popover can reopen with
     /// a brand-new view instance whose `onChange` has nothing to compare
     /// against (see StatusItemController's `.transient` behavior). Same
     /// defensive shape as `lensContent`'s inline `singleClient` check for a
     /// just-hidden client tab.
-    static func effective(_ view: AppView, monthlyEnabled: Bool) -> AppView {
-        (!monthlyEnabled && view == .monthly) ? .overview : view
+    static func effective(_ view: AppView, hiddenRaw: String) -> AppView {
+        ClientRegistry.parseIdSet(hiddenRaw).contains(view.rawValue) ? .overview : view
     }
 }
 

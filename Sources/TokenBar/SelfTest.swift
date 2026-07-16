@@ -516,20 +516,22 @@ enum SelfTest {
             ["overview", "models", "monthly", "daily", "hourly", "stats", "agents"],
             "tab row leads with Monthly, ahead of Daily")
 
-        // Monthly visibility toggle (plan 2026-07-16): hiding Monthly removes
-        // exactly that tab from the row; every other lens and their relative
-        // order is untouched.
-        expect(AppView.visible(monthlyEnabled: true) == AppView.allCases,
-            "monthly visible by default shows every lens")
-        expect(AppView.visible(monthlyEnabled: false) == AppView.allCases.filter { $0 != .monthly },
-            "hiding monthly removes exactly the monthly tab, order otherwise unchanged")
-
-        expect(AppView.effective(.monthly, monthlyEnabled: true) == .monthly,
-            "monthly stays monthly while visible")
-        expect(AppView.effective(.monthly, monthlyEnabled: false) == .overview,
-            "monthly falls back to overview once hidden")
-        expect(AppView.effective(.daily, monthlyEnabled: false) == .daily,
-            "hiding monthly doesn't affect any other lens")
+        // View-tabs visibility (plan 2026-07-16, generalized): any of the
+        // five toggleable lenses can be hidden independently; Overview and
+        // Models are fixed anchors, never in AppView.toggleable.
+        expect(AppView.toggleable == [.monthly, .daily, .hourly, .stats, .agents],
+            "toggleable lenses are fixed order, excluding Overview and Models")
+        expect(AppView.visible(hiddenRaw: "") == AppView.allCases,
+            "no hidden lenses shows every lens")
+        expect(AppView.visible(hiddenRaw: "monthly,hourly") ==
+            AppView.allCases.filter { $0 != .monthly && $0 != .hourly },
+            "hiding two lenses removes exactly those two, order otherwise unchanged")
+        expect(AppView.effective(.monthly, hiddenRaw: "monthly") == .overview,
+            "a hidden lens falls back to overview")
+        expect(AppView.effective(.monthly, hiddenRaw: "") == .monthly,
+            "a visible lens is unaffected")
+        expect(AppView.effective(.daily, hiddenRaw: "monthly") == .daily,
+            "hiding one lens doesn't affect another")
 
         // Filtered stats derive their range from the SELECTED clients (issue
         // #36 Fix, round 5): a hidden client active AFTER the visible client's
