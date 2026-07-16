@@ -35,7 +35,7 @@ back to [RunCat](https://kyome.io/runcat/) by Takuto Nakamura.
 
 Click the icon and a Liquid Glass popover opens. A row of **app tabs** filters
 _which_ agents you're looking at; a **view switch** picks _how_ that data is
-broken down — six lenses, plus the same year of usage as an orbitable 3D graph.
+broken down — seven lenses, plus the same year of usage as an orbitable 3D graph.
 
 <p align="center">
   <img src="docs/screenshots/graph-3d.png" alt="Interactive 3D contribution graph" width="400">
@@ -101,7 +101,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, change-specific guardrails, ve
 TokenBar is built on **[tokscale](https://github.com/junhoyeo/tokscale)** by
 Junho Yeo. Its vendored `tokscale-core` crate does the session parsing, dedup,
 and pricing across 25+ agents — and its interactive TUI is the blueprint for the
-whole dashboard: the six lenses (Overview, Models, Daily, Hourly, Stats, Agents)
+whole dashboard: the seven lenses (Overview, Models, Monthly, Daily, Hourly, Stats, Agents)
 and their `In · Out · CR · CW` column breakdown are modeled on it.
 
 The product line began as a fork of
