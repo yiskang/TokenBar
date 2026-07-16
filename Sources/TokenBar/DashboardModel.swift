@@ -19,9 +19,13 @@ enum AppView: String, CaseIterable {
     /// string. Same comma-separated-ids shape `ClientRegistry` uses for
     /// hidden client tabs — `ClientRegistry.parseIdSet` is reused verbatim,
     /// it's a generic CSV-id parser, not client-specific in implementation.
+    /// Only `toggleable` lenses can ever actually be hidden — even a
+    /// tampered raw string (e.g. a manually edited UserDefaults value)
+    /// can't hide Overview or Models, since Overview must always remain the
+    /// guaranteed fallback target (see `effective`).
     static func visible(hiddenRaw: String) -> [AppView] {
         let hidden = ClientRegistry.parseIdSet(hiddenRaw)
-        return allCases.filter { !hidden.contains($0.rawValue) }
+        return allCases.filter { !toggleable.contains($0) || !hidden.contains($0.rawValue) }
     }
 
     /// The view to actually render/label this frame. A hidden lens never
@@ -30,9 +34,11 @@ enum AppView: String, CaseIterable {
     /// a brand-new view instance whose `onChange` has nothing to compare
     /// against (see StatusItemController's `.transient` behavior). Same
     /// defensive shape as `lensContent`'s inline `singleClient` check for a
-    /// just-hidden client tab.
+    /// just-hidden client tab. Guarded to `toggleable` lenses for the same
+    /// tamper-resistance reason as `visible`.
     static func effective(_ view: AppView, hiddenRaw: String) -> AppView {
-        ClientRegistry.parseIdSet(hiddenRaw).contains(view.rawValue) ? .overview : view
+        guard toggleable.contains(view) else { return view }
+        return ClientRegistry.parseIdSet(hiddenRaw).contains(view.rawValue) ? .overview : view
     }
 }
 

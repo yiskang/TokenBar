@@ -532,6 +532,15 @@ enum SelfTest {
             "a visible lens is unaffected")
         expect(AppView.effective(.daily, hiddenRaw: "monthly") == .daily,
             "hiding one lens doesn't affect another")
+        // Hardening (code review, plan 2026-07-16): only `toggleable` lenses
+        // are ever actually hideable, even if the persisted raw string is
+        // tampered with out-of-band (e.g. a manually edited UserDefaults
+        // value) to contain "overview" or "models" — Overview must always
+        // remain the guaranteed fallback target.
+        expect(AppView.visible(hiddenRaw: "overview,models") == AppView.allCases,
+            "overview and models can never be hidden, even via a tampered raw string")
+        expect(AppView.effective(.overview, hiddenRaw: "overview") == .overview,
+            "overview is never subject to the hidden-lens fallback")
 
         // Filtered stats derive their range from the SELECTED clients (issue
         // #36 Fix, round 5): a hidden client active AFTER the visible client's
