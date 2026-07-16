@@ -49,6 +49,13 @@ enum Format {
         return "\(monthsShort[parts[1] - 1]) \(parts[2])"
     }
 
+    /// "2026-07" → "Jul 2026".
+    static func monthYear(_ ym: String) -> String {
+        let parts = ym.split(separator: "-").compactMap { Int($0) }
+        guard parts.count == 2, (1...12).contains(parts[1]) else { return ym }
+        return "\(monthsShort[parts[1] - 1]) \(parts[0])"
+    }
+
     /// "2026-06-10" → "06/10".
     static func mmdd(_ iso: String) -> String {
         let parts = iso.split(separator: "-")

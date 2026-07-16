@@ -457,6 +457,12 @@ enum SelfTest {
         expect(satSmall.totalTokens == 150 && satSmall.perDayMap["2026-07-01"]?.tokens == 150,
             "UsageStats is exact for normal stripes")
 
+        // Monthly lens (plan 2026-07-15): month-level date formatter.
+        expect(Format.monthYear("2026-07") == "Jul 2026", "monthYear formats YYYY-MM")
+        expect(Format.monthYear("2025-12") == "Dec 2025", "monthYear formats December")
+        expect(Format.monthYear("garbage") == "garbage", "monthYear passes malformed input through")
+        expect(Format.monthYear("2026-13") == "2026-13", "monthYear rejects month 13")
+
         // Filtered stats derive their range from the SELECTED clients (issue
         // #36 Fix, round 5): a hidden client active AFTER the visible client's
         // last day must not reset/shorten the visible streak. Fixture: "vis"
