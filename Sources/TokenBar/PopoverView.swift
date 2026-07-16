@@ -131,6 +131,13 @@ struct PopoverView: View {
         // lazy re-fetch only refreshes an already-loaded lens, so a lens still
         // nil from the reopen would never reload); without the slice, switching
         // client tabs would serve the previous tab's FFI-filtered totals.
+        // Keyed on the raw activeViewRaw, not effectiveView: intentional. If a
+        // now-hidden lazy lens (Hourly/Agents) is still the persisted active
+        // view for one frame, this fires an ensureData fetch for it — but
+        // resetViewIfHidden() immediately rewrites activeViewRaw to
+        // "overview" (same onChange pass), which changes this task's id and
+        // cancels the in-flight fetch before it commits. Self-correcting;
+        // switching to effectiveView here isn't needed for correctness.
         .task(id: "\(activeViewRaw)|\(model.year ?? "")|\(lensClientIds.joined(separator: ","))") {
             await model.ensureData(for: activeView.wrappedValue, clients: lensClientIds)
         }
