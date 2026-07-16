@@ -9,6 +9,13 @@ enum AppView: String, CaseIterable {
     case overview, models, monthly, daily, hourly, stats, agents
 
     var label: String { rawValue.prefix(1).uppercased() + rawValue.dropFirst() }
+
+    /// Lenses shown in the tab row. Monthly is the only user-hideable lens
+    /// today; hiding it removes the tab entirely rather than showing an
+    /// empty placeholder (unlike Agent limits, which stays a card in place).
+    static func visible(monthlyEnabled: Bool) -> [AppView] {
+        monthlyEnabled ? allCases : allCases.filter { $0 != .monthly }
+    }
 }
 
 /// Snapshot of the model's essential state, captured on each successful
