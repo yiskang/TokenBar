@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The six-lens tab row under the header, port of ViewSwitch.tsx.
+/// The seven-lens tab row under the header, port of ViewSwitch.tsx.
 struct ViewSwitch: View {
     @Binding var active: AppView
 
