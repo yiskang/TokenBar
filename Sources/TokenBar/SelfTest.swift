@@ -463,6 +463,54 @@ enum SelfTest {
         expect(Format.monthYear("garbage") == "garbage", "monthYear passes malformed input through")
         expect(Format.monthYear("2026-13") == "2026-13", "monthYear rejects month 13")
 
+        // Monthly lens bucketing (plan 2026-07-15): group by the FULL
+        // "YYYY-MM" prefix (never month-of-year), strict client allowlist,
+        // saturating folds, drill-down merges model slices across days.
+        let monthlyJSON = """
+        {"meta":{"generatedAt":"now","version":"1","dateRange":{"start":"2025-12-31","end":"2026-01-02"}},
+         "summary":{"totalTokens":0,"totalCost":0,"totalDays":3,"activeDays":3,"averagePerDay":0,
+                    "maxCostInSingleDay":0,"clients":["a","b"],"models":[]},
+         "years":[],
+         "contributions":[
+           {"date":"2025-12-31","totals":{"tokens":0,"cost":1,"messages":1},"intensity":1,
+            "tokenBreakdown":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"reasoning":0},
+            "clients":[
+              {"client":"a","modelId":"m1","providerId":"p","cost":1,"messages":1,
+               "tokens":{"input":100,"output":0,"cacheRead":0,"cacheWrite":0,"reasoning":0}}]},
+           {"date":"2026-01-01","totals":{"tokens":0,"cost":3,"messages":2},"intensity":1,
+            "tokenBreakdown":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"reasoning":0},
+            "clients":[
+              {"client":"a","modelId":"m1","providerId":"p","cost":1,"messages":1,
+               "tokens":{"input":40,"output":0,"cacheRead":0,"cacheWrite":0,"reasoning":0}},
+              {"client":"b","modelId":"m9","providerId":"p","cost":2,"messages":1,
+               "tokens":{"input":7,"output":0,"cacheRead":0,"cacheWrite":0,"reasoning":0}}]},
+           {"date":"2026-01-02","totals":{"tokens":0,"cost":1,"messages":1},"intensity":1,
+            "tokenBreakdown":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"reasoning":0},
+            "clients":[
+              {"client":"a","modelId":"m1","providerId":"p","cost":1,"messages":1,
+               "tokens":{"input":9223372036854775807,"output":0,"cacheRead":0,"cacheWrite":0,"reasoning":0}}]}
+         ]}
+        """
+        let monthlyPayload = try! JSONDecoder().decode(UsagePayload.self, from: Data(monthlyJSON.utf8))
+        let mRows = MonthlyView.monthRows(payload: monthlyPayload, clientIds: ["a"])
+        expect(mRows.count == 2 && mRows[0].month == "2026-01" && mRows[1].month == "2025-12",
+            "monthly buckets split at the year boundary, most recent first")
+        expect(mRows[1].tokens == 100 && mRows[1].messages == 1,
+            "december totals only december")
+        expect(mRows[0].tokens == .max,
+            "monthly token fold saturates an Int64.max stripe")
+        expect(mRows[0].cost == 2.0 && mRows[0].messages == 2,
+            "hidden client b is excluded from january totals")
+        expect(MonthlyView.monthRows(payload: monthlyPayload, clientIds: []).isEmpty,
+            "empty client selection shows no months")
+        let mSlices = MonthlyView.modelSlices(
+            for: mRows[0], clientIds: ["a"], colors: ModelColorMap(report: nil))
+        expect(mSlices.count == 1 && mSlices[0].key == "m1|p" && mSlices[0].tokens == .max,
+            "drill-down merges the month's model slices across days with saturation")
+        expect(MonthlyView.modelSlices(
+                for: mRows[0], clientIds: ["a", "b"], colors: ModelColorMap(report: nil)).count == 2,
+            "drill-down shows client b's model when b is selected")
+
         // Filtered stats derive their range from the SELECTED clients (issue
         // #36 Fix, round 5): a hidden client active AFTER the visible client's
         // last day must not reset/shorten the visible streak. Fixture: "vis"
