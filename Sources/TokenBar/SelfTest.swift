@@ -516,6 +516,14 @@ enum SelfTest {
             ["overview", "models", "monthly", "daily", "hourly", "stats", "agents"],
             "tab row leads with Monthly, ahead of Daily")
 
+        // Monthly visibility toggle (plan 2026-07-16): hiding Monthly removes
+        // exactly that tab from the row; every other lens and their relative
+        // order is untouched.
+        expect(AppView.visible(monthlyEnabled: true) == AppView.allCases,
+            "monthly visible by default shows every lens")
+        expect(AppView.visible(monthlyEnabled: false) == AppView.allCases.filter { $0 != .monthly },
+            "hiding monthly removes exactly the monthly tab, order otherwise unchanged")
+
         // Filtered stats derive their range from the SELECTED clients (issue
         // #36 Fix, round 5): a hidden client active AFTER the visible client's
         // last day must not reset/shorten the visible streak. Fixture: "vis"
