@@ -21,6 +21,7 @@ struct SettingsPanel: View {
     /// Mirrors SMAppService's actual state (read once per panel appearance).
     @State private var autostartEnabled = AutostartService.isAvailable && AutostartService.isEnabled
     @AppStorage("tokenbar.limits.enabled") private var limitsEnabled = true
+    @AppStorage("tokenbar.monthly.enabled") private var monthlyEnabled = true
     @AppStorage("tokenbar.limits.asUsed") private var limitsAsUsed = false
     @AppStorage("tokenbar.limits.paceMode") private var paceModeRaw = PaceMode.historical.rawValue
     @AppStorage("tokenbar.limits.layout") private var layoutRaw = LimitsLayout.full.rawValue
@@ -208,6 +209,11 @@ struct SettingsPanel: View {
                         hint("Hides only that client's quota card here and on its own tab — the tab and its cost/token data stay visible. Useful for accounts with no OAuth quota (e.g. Claude Console). Grayed out when the tab itself is hidden below, since a hidden tab always hides its quota card too.")
                     }
                 }
+            }
+
+            section("Monthly") {
+                toggleRow("Show Monthly tab", isOn: $monthlyEnabled)
+                hint("Off removes the Monthly tab from the popover's tab row. Cost/token data is unaffected.")
             }
 
             section("Client tabs (top bar)") {

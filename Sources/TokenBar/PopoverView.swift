@@ -21,6 +21,7 @@ struct PopoverView: View {
     @State private var cmdHintTask: Task<Void, Never>?
     @AppStorage("tokenbar.chart.view") private var chartViewRaw = "2d"
     @AppStorage("tokenbar.view") private var activeViewRaw = AppView.overview.rawValue
+    @AppStorage("tokenbar.monthly.enabled") private var monthlyEnabled = true
     @AppStorage("tokenbar.bridge.dismissed") private var bridgeDismissed = false
     /// "overview" or a client id. Persisted so the selection survives the
     /// popover's rootView teardown/rebuild cycle (StatusItemController swaps
@@ -42,6 +43,13 @@ struct PopoverView: View {
         Binding(
             get: { AppView(rawValue: activeViewRaw) ?? .overview },
             set: { activeViewRaw = $0.rawValue })
+    }
+
+    /// Lenses shown in the tab row — Monthly drops out when the user hides it
+    /// in Settings. Reactive via `monthlyEnabled` so a live Settings toggle
+    /// updates the row without reopening the popover.
+    private var visibleViews: [AppView] {
+        AppView.visible(monthlyEnabled: monthlyEnabled)
     }
 
     /// Client ids shown in the top tab bar: present clients minus the user's
@@ -91,7 +99,7 @@ struct PopoverView: View {
                     .padding(.horizontal, 12)
                     .padding(.bottom, 8)
             }
-            ViewSwitch(active: activeView)
+            ViewSwitch(active: activeView, views: visibleViews)
                 .padding(.horizontal, 12)
                 .padding(.bottom, 10)
             Divider()
@@ -170,6 +178,9 @@ struct PopoverView: View {
         .onChange(of: displayClients) { _, _ in
             resetTabIfHidden()
         }
+        .onChange(of: monthlyEnabled) { _, _ in
+            resetViewIfHidden()
+        }
     }
 
     /// Fall back to Overview if the active client tab is no longer displayed
@@ -182,6 +193,14 @@ struct PopoverView: View {
         guard model.stats?.presentClients != nil else { return }
         if activeTab != "overview", !displayClients.contains(activeTab) {
             activeTab = "overview"
+        }
+    }
+
+    /// Fall back to Overview if Monthly is the active lens and just got
+    /// hidden in Settings — the tab-row analog of `resetTabIfHidden()`.
+    private func resetViewIfHidden() {
+        if !monthlyEnabled, activeView.wrappedValue == .monthly {
+            activeView.wrappedValue = .overview
         }
     }
 
