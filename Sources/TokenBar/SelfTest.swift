@@ -511,6 +511,11 @@ enum SelfTest {
                 for: mRows[0], clientIds: ["a", "b"], colors: ModelColorMap(report: nil)).count == 2,
             "drill-down shows client b's model when b is selected")
 
+        // Tab order (plan 2026-07-16): Monthly leads Daily in the tab row.
+        expect(AppView.allCases.map(\.rawValue) ==
+            ["overview", "models", "monthly", "daily", "hourly", "stats", "agents"],
+            "tab row leads with Monthly, ahead of Daily")
+
         // Filtered stats derive their range from the SELECTED clients (issue
         // #36 Fix, round 5): a hidden client active AFTER the visible client's
         // last day must not reset/shorten the visible streak. Fixture: "vis"
